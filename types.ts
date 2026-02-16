@@ -18,6 +18,14 @@ export interface LiterasiConfig {
     questions: string[];
 }
 
+// Interface baru untuk Literasi per Tanggal
+export interface LiterasiMaterial {
+    id?: string;
+    date: string;
+    youtubeUrl: string;
+    questions: string[];
+}
+
 export interface GlobalSettings {
     startRamadhanV1: string;
     startRamadhanV2: string;

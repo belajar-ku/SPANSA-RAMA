@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
-import { User, UserRole, Gender, CLASSES, LiterasiConfig, GlobalSettings } from './types';
+import { User, UserRole, Gender, CLASSES, LiterasiMaterial, GlobalSettings } from './types';
 
 // --- Tab Monitoring (Guru) ---
 export const TabMonitoring = () => {
@@ -341,12 +341,26 @@ export const TabAdminUsers = () => {
 // --- Tab Admin Data (Settings) ---
 export const TabAdminData = () => {
     const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({ startRamadhanV1: '', startRamadhanV2: '', idulFitri: '' });
-    const [literasiConfig, setLiterasiConfig] = useState<LiterasiConfig>({ youtubeUrl: '', questions: [] });
     
+    // State for Literasi Material
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [literasiMaterial, setLiterasiMaterial] = useState<LiterasiMaterial>({ date: '', youtubeUrl: '', questions: [] });
+    const [loadingLiterasi, setLoadingLiterasi] = useState(false);
+
     useEffect(() => {
         SupabaseService.getGlobalSettings().then(setGlobalSettings);
-        SupabaseService.getLiterasiConfig().then(setLiterasiConfig);
     }, []);
+
+    // Effect to fetch Literasi Material when Date Changes
+    useEffect(() => {
+        const fetchMat = async () => {
+            setLoadingLiterasi(true);
+            const mat = await SupabaseService.getLiterasiMaterial(selectedDate);
+            setLiterasiMaterial(mat);
+            setLoadingLiterasi(false);
+        };
+        fetchMat();
+    }, [selectedDate]);
 
     const saveGlobal = async () => {
         await SupabaseService.saveGlobalSettings(globalSettings);
@@ -354,19 +368,19 @@ export const TabAdminData = () => {
     };
 
     const saveLiterasi = async () => {
-        await SupabaseService.saveLiterasiConfig(literasiConfig);
-        Swal.fire('Sukses', 'Konfigurasi Literasi disimpan', 'success');
+        await SupabaseService.saveLiterasiMaterial(literasiMaterial);
+        Swal.fire('Sukses', `Materi literasi tanggal ${selectedDate} disimpan`, 'success');
     };
 
-    const addQuestion = () => setLiterasiConfig({...literasiConfig, questions: [...literasiConfig.questions, '']});
+    const addQuestion = () => setLiterasiMaterial({...literasiMaterial, questions: [...literasiMaterial.questions, '']});
     const updateQuestion = (i: number, val: string) => {
-        const newQ = [...literasiConfig.questions];
+        const newQ = [...literasiMaterial.questions];
         newQ[i] = val;
-        setLiterasiConfig({...literasiConfig, questions: newQ});
+        setLiterasiMaterial({...literasiMaterial, questions: newQ});
     };
     const removeQuestion = (i: number) => {
-        const newQ = literasiConfig.questions.filter((_, idx) => idx !== i);
-        setLiterasiConfig({...literasiConfig, questions: newQ});
+        const newQ = literasiMaterial.questions.filter((_, idx) => idx !== i);
+        setLiterasiMaterial({...literasiMaterial, questions: newQ});
     };
 
     return (
@@ -393,27 +407,39 @@ export const TabAdminData = () => {
                 </div>
             </div>
 
-            {/* Literasi Config */}
+            {/* Literasi Config (BY DATE) */}
             <div className="glass-card p-6 rounded-[24px]">
                 <h3 className="font-bold text-lg mb-4 text-slate-800 flex items-center gap-2">
                     <i className="fas fa-video text-red-500"></i> Konfigurasi Literasi
                 </h3>
                 <div className="space-y-4">
-                    <div>
-                        <label className="text-xs font-bold text-slate-500">Link YouTube</label>
-                        <input type="text" className="w-full p-3 rounded-xl border" placeholder="https://youtube.com/watch?v=..." value={literasiConfig.youtubeUrl} onChange={e => setLiterasiConfig({...literasiConfig, youtubeUrl: e.target.value})} />
+                    {/* Date Selector */}
+                    <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                         <label className="text-xs font-bold text-red-800 uppercase block mb-1">Pilih Tanggal Materi</label>
+                         <input type="date" className="w-full p-3 rounded-xl border border-red-200 font-bold text-red-900" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
                     </div>
-                    <div>
-                        <label className="text-xs font-bold text-slate-500 mb-2 block">Daftar Pertanyaan</label>
-                        {literasiConfig.questions.map((q, i) => (
-                            <div key={i} className="flex gap-2 mb-2">
-                                <input className="flex-1 p-2 rounded-lg border text-sm" value={q} onChange={e => updateQuestion(i, e.target.value)} placeholder={`Pertanyaan ${i+1}`} />
-                                <button onClick={() => removeQuestion(i)} className="w-10 bg-red-100 text-red-500 rounded-lg"><i className="fas fa-trash"></i></button>
+
+                    {loadingLiterasi ? (
+                        <div className="text-center py-4 text-slate-500"><i className="fas fa-circle-notch fa-spin mr-2"></i> Memuat materi...</div>
+                    ) : (
+                        <>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500">Link YouTube</label>
+                                <input type="text" className="w-full p-3 rounded-xl border" placeholder="https://youtube.com/watch?v=..." value={literasiMaterial.youtubeUrl} onChange={e => setLiterasiMaterial({...literasiMaterial, youtubeUrl: e.target.value})} />
                             </div>
-                        ))}
-                        <button onClick={addQuestion} className="w-full py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs border border-dashed border-slate-300">+ Tambah Pertanyaan</button>
-                    </div>
-                    <button onClick={saveLiterasi} className="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-md">Simpan Literasi</button>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 mb-2 block">Daftar Pertanyaan</label>
+                                {literasiMaterial.questions.map((q, i) => (
+                                    <div key={i} className="flex gap-2 mb-2">
+                                        <input className="flex-1 p-2 rounded-lg border text-sm" value={q} onChange={e => updateQuestion(i, e.target.value)} placeholder={`Pertanyaan ${i+1}`} />
+                                        <button onClick={() => removeQuestion(i)} className="w-10 bg-red-100 text-red-500 rounded-lg"><i className="fas fa-trash"></i></button>
+                                    </div>
+                                ))}
+                                <button onClick={addQuestion} className="w-full py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs border border-dashed border-slate-300">+ Tambah Pertanyaan</button>
+                            </div>
+                            <button onClick={saveLiterasi} className="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-md">Simpan Literasi ({selectedDate})</button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { User, LiterasiConfig, RamadanTarget, DailyLog, GlobalSettings } from './types';
+import { User, LiterasiConfig, LiterasiMaterial, RamadanTarget, DailyLog, GlobalSettings } from './types';
 
 // PERBAIKAN: Project ID yang benar sesuai token adalah 'xnlwtkxhifqabuawmsdu'
 const SUPABASE_URL = 'https://xnlwtkxhifqabuawmsdu.supabase.co';
@@ -193,15 +193,34 @@ export const SupabaseService = {
       } catch(e) { console.error(e); return []; }
   },
 
-  // --- CONFIG ---
-  getLiterasiConfig: async () => {
+  // --- CONFIG & LITERASI ---
+  // [DEPRECATED] getLiterasiConfig but kept for legacy check
+  getLiterasiConfig: async () => { return { youtubeUrl: '', questions: [] } },
+
+  // [NEW] Get Material By Date
+  getLiterasiMaterial: async (date: string): Promise<LiterasiMaterial> => {
       try {
-        const { data } = await supabase.from('app_settings').select('value').eq('key', 'literasi_config').maybeSingle();
-        return data?.value || { youtubeUrl: 'https://www.youtube.com/watch?v=HuNqR6W4FjU', questions: ['Soal Default 1'] };
-      } catch { return { youtubeUrl: '', questions: [] }; }
+        const { data } = await supabase.from('literasi_materials').select('*').eq('date', date).maybeSingle();
+        if (data) {
+            return {
+                id: data.id,
+                date: data.date,
+                youtubeUrl: data.youtube_url || '',
+                questions: data.questions || []
+            };
+        }
+        return { date, youtubeUrl: '', questions: ['Jelaskan inti sari video tersebut!'] };
+      } catch { return { date, youtubeUrl: '', questions: [] }; }
   },
-  saveLiterasiConfig: async (cfg: LiterasiConfig) => {
-      await supabase.from('app_settings').upsert({ key: 'literasi_config', value: cfg });
+
+  // [NEW] Save Material
+  saveLiterasiMaterial: async (material: LiterasiMaterial) => {
+      const payload = {
+          date: material.date,
+          youtube_url: material.youtubeUrl,
+          questions: material.questions
+      };
+      await supabase.from('literasi_materials').upsert(payload, { onConflict: 'date' });
   },
 
   getGlobalSettings: async () => {

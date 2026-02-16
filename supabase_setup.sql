@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS daily_logs CASCADE;
 DROP TABLE IF EXISTS ramadan_targets CASCADE;
 DROP TABLE IF EXISTS app_settings CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS literasi_materials CASCADE;
 
 -- 3. USERS
 CREATE TABLE users (
@@ -57,23 +58,35 @@ CREATE TABLE daily_logs (
     CONSTRAINT daily_logs_user_date_key UNIQUE (user_id, date)
 );
 
--- 7. POLICIES (RLS)
+-- 7. LITERASI MATERIALS (NEW)
+CREATE TABLE literasi_materials (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    date DATE NOT NULL,
+    youtube_url TEXT,
+    questions JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT literasi_materials_date_key UNIQUE (date)
+);
+
+-- 8. POLICIES (RLS)
 -- Karena aplikasi menggunakan 'auth' manual via query tabel, kita buka akses public untuk Key Anon.
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ramadan_targets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE literasi_materials ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public Access Users" ON users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Settings" ON app_settings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Targets" ON ramadan_targets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Logs" ON daily_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Access Literasi" ON literasi_materials FOR ALL USING (true) WITH CHECK (true);
 
--- 8. GRANT ACCESS
+-- 9. GRANT ACCESS
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
 
--- 9. SEED DATA (Data Awal)
+-- 10. SEED DATA (Data Awal)
 -- Admin Default
 INSERT INTO users (username, password, name, role, gender)
 VALUES ('admin', 'Spansa@1', 'Administrator', 'admin', 'L')
@@ -82,10 +95,6 @@ ON CONFLICT (username) DO NOTHING;
 -- Config Default
 INSERT INTO app_settings (key, value)
 VALUES 
-(
-    'literasi_config', 
-    '{"youtubeUrl": "https://www.youtube.com/watch?v=HuNqR6W4FjU", "questions": ["Jelaskan inti sari video tersebut!", "Apa hikmah yang bisa diambil?"]}'::jsonb
-),
 (
     'global_settings',
     '{"startRamadhanV1": "", "startRamadhanV2": "", "idulFitri": ""}'::jsonb

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
-import { User, LiterasiConfig, DailyLog, DailyLogDetails, RAMADAN_QUOTES } from './types';
+import { User, LiterasiMaterial, DailyLog, DailyLogDetails, RAMADAN_QUOTES } from './types';
 
 const getTodayDate = () => new Date().toISOString().split('T')[0];
 
@@ -9,23 +9,23 @@ const getTodayDate = () => new Date().toISOString().split('T')[0];
 export const TabHarian = ({ user }: { user: User }) => {
   const [submitted, setSubmitted] = useState(false);
   
-  // State for Form logic
-  const [puasaStatus, setPuasaStatus] = useState<'Penuh' | 'Setengah' | 'Tidak'>('Penuh');
-  const [alasanTidakPuasa, setAlasanTidakPuasa] = useState('Sakit');
+  // State for Form logic - DEFAULT VALUE KOSONG (request user)
+  const [puasaStatus, setPuasaStatus] = useState<'Penuh' | 'Setengah' | 'Tidak' | ''>('');
+  const [alasanTidakPuasa, setAlasanTidakPuasa] = useState('');
   const [isHaid, setIsHaid] = useState(false);
 
-  const [sahurStatus, setSahurStatus] = useState('Ya');
-  const [sahurLokasi, setSahurLokasi] = useState('Sahur Bersama Keluarga');
-  const [sahurWaktu, setSahurWaktu] = useState('1 Jam sebelum Imsak');
-  const [bukaStatus, setBukaStatus] = useState('Segera setelah Azan Maghrib');
+  const [sahurStatus, setSahurStatus] = useState('');
+  const [sahurLokasi, setSahurLokasi] = useState('');
+  const [sahurWaktu, setSahurWaktu] = useState('');
+  const [bukaStatus, setBukaStatus] = useState('');
 
   const [sholatStatus, setSholatStatus] = useState<Record<string, string>>({
-    'Subuh': 'Lewat', 'Zuhur': 'Lewat', 'Asar': 'Lewat', 'Magrib': 'Lewat', 'Isya': 'Lewat'
+    'Subuh': '', 'Zuhur': '', 'Asar': '', 'Magrib': '', 'Isya': ''
   });
 
   const [sunahStatus, setSunahStatus] = useState<Record<string, string>>({
-    'Tarawih': 'Tidak Melaksanakan', 'Witir': 'Tidak Melaksanakan',
-    'Tahajud': 'Tidak Melaksanakan', 'Duha': 'Tidak Melaksanakan'
+    'Tarawih': '', 'Witir': '',
+    'Tahajud': '', 'Duha': ''
   });
 
   const [sedekahDiri, setSedekahDiri] = useState('');
@@ -41,13 +41,30 @@ export const TabHarian = ({ user }: { user: User }) => {
      // Check existing log
      SupabaseService.getDailyLog(user.id, getTodayDate()).then(data => {
          if (data) {
-             setSubmitted(true);
+             // Jika sudah ada data, load ke state
              const d = data.details;
              if(d.puasaStatus) setPuasaStatus(d.puasaStatus as any);
              if(d.isHaid) setIsHaid(d.isHaid);
+             if(d.alasanTidakPuasa) setAlasanTidakPuasa(d.alasanTidakPuasa);
+             
+             if(d.sahurStatus) setSahurStatus(d.sahurStatus);
+             if(d.sahurLokasi) setSahurLokasi(d.sahurLokasi);
+             if(d.sahurWaktu) setSahurWaktu(d.sahurWaktu);
+             if(d.bukaStatus) setBukaStatus(d.bukaStatus);
+
              if(d.sholatStatus) setSholatStatus(d.sholatStatus);
              if(d.sunahStatus) setSunahStatus(d.sunahStatus);
-             // Load others if needed for edit mode (not implemented yet for simplicity)
+             
+             if(d.sedekahDiri) setSedekahDiri(d.sedekahDiri);
+             if(d.sedekahRumah) setSedekahRumah(d.sedekahRumah);
+             if(d.sedekahMasyarakat) setSedekahMasyarakat(d.sedekahMasyarakat);
+             
+             if(d.belajarMapel) setBelajarMapel(d.belajarMapel);
+             if(d.belajarTopik) setBelajarTopik(d.belajarTopik);
+
+             // Cek apakah ini submission final atau draft (berdasarkan kelengkapan data atau flag logic jika ada)
+             // Untuk simplifikasi, jika poin > 0 biasanya sudah submit, tapi kita biarkan user edit kecuali dia klik tombol Kirim Laporan nanti.
+             // Namun logic UI 'Laporan Terkirim' kita set manual via tombol.
          }
          setLoading(false);
      });
@@ -67,11 +84,24 @@ export const TabHarian = ({ user }: { user: User }) => {
   const quoteIndex = (currentDay - 1) % RAMADAN_QUOTES.length;
   const currentQuote = RAMADAN_QUOTES[quoteIndex >= 0 ? quoteIndex : 0];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleAction = async (isDraft: boolean) => {
+    // VALIDASI: Jika BUKAN draft (Kirim Laporan), cek field wajib
+    if (!isDraft) {
+        if (puasaStatus === '') return Swal.fire('Belum Lengkap', 'Status Puasa harus dipilih', 'warning');
+        if (puasaStatus === 'Tidak' && !alasanTidakPuasa) return Swal.fire('Belum Lengkap', 'Alasan tidak puasa harus dipilih', 'warning');
+        if (!isHaid) {
+            if (sahurStatus === '') return Swal.fire('Belum Lengkap', 'Status Sahur harus dipilih', 'warning');
+            if (bukaStatus === '') return Swal.fire('Belum Lengkap', 'Status Buka Puasa harus dipilih', 'warning');
+            const sholatIncomplete = Object.values(sholatStatus).some(v => v === '');
+            if (sholatIncomplete) return Swal.fire('Belum Lengkap', 'Semua status Salat Wajib harus dipilih', 'warning');
+        }
+    }
+
+    // Prepare Details
+    // @ts-ignore
     const details: DailyLogDetails = {
-          puasaStatus, alasanTidakPuasa, isHaid,
+          puasaStatus: puasaStatus as any, 
+          alasanTidakPuasa, isHaid,
           sahurStatus, sahurLokasi, sahurWaktu, bukaStatus,
           sholatStatus, sunahStatus,
           sedekahDiri, sedekahRumah, sedekahMasyarakat,
@@ -82,14 +112,22 @@ export const TabHarian = ({ user }: { user: User }) => {
         user_id: user.id,
         date: getTodayDate(),
         puasa_type: puasaStatus === 'Penuh' ? 'penuh' : puasaStatus === 'Setengah' ? 'setengah' : 'tidak',
-        total_points: 0, // Calculated in service
+        total_points: 0, // Service will calc
         details: details
     };
     
+    // Show Loading
+    Swal.fire({ title: 'Menyimpan...', didOpen: () => Swal.showLoading() });
+
     const success = await SupabaseService.saveDailyLog(payload);
+    
     if (success) {
-        setSubmitted(true);
-        Swal.fire({ icon: 'success', title: 'Alhamdulillah', text: 'Laporan hari ini berhasil disimpan!', confirmButtonColor: '#0ea5e9' });
+        if (isDraft) {
+            Swal.fire({ icon: 'success', title: 'Tersimpan Sementara', text: 'Data telah disimpan. Jangan lupa kirim laporan sebelum hari berakhir.', timer: 2000, showConfirmButton: false });
+        } else {
+            setSubmitted(true);
+            Swal.fire({ icon: 'success', title: 'Alhamdulillah', text: 'Laporan hari ini berhasil dikirim!', confirmButtonColor: '#0ea5e9' });
+        }
     } else {
         Swal.fire('Gagal', 'Terjadi kesalahan saat menyimpan.', 'error');
     }
@@ -127,7 +165,7 @@ export const TabHarian = ({ user }: { user: User }) => {
           </div>
        </div>
 
-       <form onSubmit={handleSubmit} className="space-y-5">
+       <div className="space-y-5">
           {/* Tanggal */}
           <div className="glass-card p-1.5 rounded-[28px]">
              <div className="bg-white/50 rounded-[24px] p-5 border border-white/60">
@@ -152,6 +190,7 @@ export const TabHarian = ({ user }: { user: User }) => {
                  <h3 className="font-bold text-emerald-800 mb-2 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-check-circle text-emerald-500"></i> Misi Puasa</h3>
                  
                  <select className="w-full p-4 bg-white border-2 border-emerald-100 rounded-xl text-sm font-bold text-slate-700 outline-none" value={puasaStatus} onChange={(e) => setPuasaStatus(e.target.value as any)}>
+                    <option value="" disabled hidden>----</option>
                     <option value="Penuh">✅ Puasa Penuh (100 Poin)</option>
                     <option value="Setengah">⚠️ Puasa Setengah Hari (50 Poin)</option>
                     <option value="Tidak">❌ Tidak Puasa (0 Poin)</option>
@@ -161,6 +200,7 @@ export const TabHarian = ({ user }: { user: User }) => {
                      <div className="animate-slide-up">
                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Alasan</label>
                         <select className="w-full p-3 bg-red-50 border border-red-100 rounded-xl text-sm font-bold text-red-600 outline-none" value={alasanTidakPuasa} onChange={(e) => setAlasanTidakPuasa(e.target.value)}>
+                            <option value="" disabled hidden>----</option>
                             <option value="Sakit">Sakit</option>
                             <option value="Bepergian Jauh">Bepergian Jauh</option>
                             <option value="Menstruasi">Menstruasi</option>
@@ -175,17 +215,20 @@ export const TabHarian = ({ user }: { user: User }) => {
                         <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-2">Aktivitas Sahur</label>
                         <div className="bg-white/60 p-3 rounded-xl border border-emerald-50">
                             <select className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 border-b border-emerald-100 outline-none mb-3" value={sahurStatus} onChange={(e) => setSahurStatus(e.target.value)}>
+                                <option value="" disabled hidden>----</option>
                                 <option value="Ya">✅ Ya, Saya Sahur</option>
                                 <option value="Tidak">❌ Tidak Sahur</option>
                             </select>
                             {sahurStatus === 'Ya' && (
                                 <div className="grid grid-cols-2 gap-2">
                                     <select className="w-full p-2 bg-emerald-50 rounded-lg text-xs font-semibold text-emerald-800 outline-none" value={sahurLokasi} onChange={(e) => setSahurLokasi(e.target.value)}>
+                                        <option value="" disabled hidden>--Lokasi--</option>
                                         <option value="Sahur Bersama Keluarga">🏠 Keluarga</option>
                                         <option value="Sahur di Masjid">🕌 Masjid</option>
                                         <option value="Sahur di Musala">🕋 Musala</option>
                                     </select>
                                     <select className="w-full p-2 bg-emerald-50 rounded-lg text-xs font-semibold text-emerald-800 outline-none" value={sahurWaktu} onChange={(e) => setSahurWaktu(e.target.value)}>
+                                        <option value="" disabled hidden>--Waktu--</option>
                                         <option value="2 Jam sebelum Imsak">🕑 2 Jam Sblm</option>
                                         <option value="1 Jam sebelum Imsak">🕐 1 Jam Sblm</option>
                                     </select>
@@ -197,6 +240,7 @@ export const TabHarian = ({ user }: { user: User }) => {
                         <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-2">Aktivitas Buka</label>
                         <div className="bg-white/60 p-3 rounded-xl border border-emerald-50">
                             <select className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 outline-none" value={bukaStatus} onChange={(e) => setBukaStatus(e.target.value)}>
+                                <option value="" disabled hidden>----</option>
                                 <option value="Segera setelah Azan Maghrib">🥣 Segera setelah Azan</option>
                                 <option value="Setelah Salat Maghrib">🕌 Setelah Salat Magrib</option>
                             </select>
@@ -216,6 +260,7 @@ export const TabHarian = ({ user }: { user: User }) => {
                          <div key={p} className="flex items-center justify-between bg-white p-3 rounded-xl border border-sky-100 shadow-sm">
                              <span className="text-xs font-bold text-sky-900 w-16">{p}</span>
                              <select className="bg-sky-50 text-xs font-bold text-sky-700 outline-none py-1.5 px-3 rounded-lg w-full ml-2" value={sholatStatus[p]} onChange={(e) => updateSholat(p, e.target.value)}>
+                                 <option value="" disabled hidden>----</option>
                                  <option value="Lewat">❌ Lewat</option>
                                  <option value="Berjamaah di Masjid">🕌 Jamaah Masjid</option>
                                  <option value="Berjamaah di Rumah">🏠 Jamaah Rumah</option>
@@ -237,6 +282,7 @@ export const TabHarian = ({ user }: { user: User }) => {
                          <div key={s} className="bg-white p-3 rounded-xl flex items-center justify-between border border-amber-100 shadow-sm">
                              <span className="text-xs font-bold text-amber-900 w-24">{s}</span>
                              <select className="bg-amber-50 text-xs font-bold text-amber-700 outline-none py-1.5 px-3 rounded-lg w-full" value={sunahStatus[s]} onChange={(e) => updateSunah(s, e.target.value)}>
+                                <option value="" disabled hidden>----</option>
                                 <option value="Tidak Melaksanakan">⚪ Tidak</option>
                                 <option value="Di Masjid">🕌 Masjid</option>
                                 <option value="Di Musala">🕋 Musala</option>
@@ -286,31 +332,53 @@ export const TabHarian = ({ user }: { user: User }) => {
              </div>
           </div>
 
-          <button type="submit" className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-bold text-lg rounded-[24px] shadow-lg hover:-translate-y-1 transition-all">
-             Kirim Laporan
-          </button>
-       </form>
+          <div className="space-y-3">
+            <button 
+                type="button" 
+                onClick={() => handleAction(true)} 
+                className="w-full py-3 bg-amber-400 text-amber-900 font-bold text-lg rounded-[24px] shadow-lg hover:-translate-y-1 transition-all border-b-4 border-amber-600"
+            >
+                <i className="fas fa-save mr-2"></i> Simpan Sementara
+            </button>
+            <button 
+                type="button"
+                onClick={() => handleAction(false)} 
+                className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-bold text-lg rounded-[24px] shadow-lg hover:-translate-y-1 transition-all"
+            >
+                Kirim Laporan
+            </button>
+          </div>
+       </div>
     </div>
   );
 };
 
 // --- Tab Literasi ---
 export const TabLiterasi = ({ user }: { user: User }) => {
-    const [config, setConfig] = useState<LiterasiConfig | null>(null);
+    const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
     const [answers, setAnswers] = useState<string[]>([]);
     const [submitted, setSubmitted] = useState(false);
     const [progress, setProgress] = useState(0);
     const [isUnlocked, setIsUnlocked] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    
     const playerRef = useRef<any>(null);
+    const lastTimeRef = useRef<number>(0); // Untuk anti-skip logic
 
     useEffect(() => {
         const init = async () => {
-            const cfg = await SupabaseService.getLiterasiConfig();
-            setConfig(cfg);
-            setAnswers(new Array(cfg.questions.length).fill(''));
+            const today = getTodayDate();
+            // 1. Fetch material for TODAY
+            const mat = await SupabaseService.getLiterasiMaterial(today);
+            setMaterial(mat);
             
-            // Check existing
-            const log = await SupabaseService.getDailyLog(user.id, getTodayDate());
+            // 2. Initialize answers array based on questions
+            if (mat && mat.questions) {
+                setAnswers(new Array(mat.questions.length).fill(''));
+            }
+
+            // 3. Check if already submitted today
+            const log = await SupabaseService.getDailyLog(user.id, today);
             if (log?.details.literasiResponse) {
                 setSubmitted(true);
             }
@@ -320,10 +388,11 @@ export const TabLiterasi = ({ user }: { user: User }) => {
 
     // YouTube API Load
     const getYoutubeId = (url: string) => {
+        if(!url) return null;
         const match = url.match(/^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/);
         return (match && match[2].length === 11) ? match[2] : null;
     };
-    const videoId = config ? getYoutubeId(config.youtubeUrl) : null;
+    const videoId = material ? getYoutubeId(material.youtubeUrl) : null;
 
     useEffect(() => {
         if (!videoId || submitted) return;
@@ -333,7 +402,19 @@ export const TabLiterasi = ({ user }: { user: User }) => {
                 // @ts-ignore
                 playerRef.current = new (window as any).YT.Player('youtube-player', {
                     height: '100%', width: '100%', videoId: videoId,
-                    playerVars: { 'playsinline': 1, 'controls': 1 },
+                    playerVars: { 
+                        'playsinline': 1, 
+                        'controls': 0, // Sembunyikan kontrol default
+                        'disablekb': 1, // Matikan keyboard shortcut
+                        'fs': 0, // Matikan fullscreen
+                        'rel': 0,
+                        'modestbranding': 1
+                    },
+                    events: {
+                        'onStateChange': (e: any) => {
+                            if (e.data === 1) setIsPlaying(true);
+                        }
+                    }
                 });
              }
         };
@@ -344,12 +425,23 @@ export const TabLiterasi = ({ user }: { user: User }) => {
         } else { initPlayer(); }
     }, [videoId, submitted]);
 
-    // Progress Checker
+    // Progress Checker & Anti-Skip
     useEffect(() => {
         const timer = setInterval(() => {
             if (playerRef.current?.getCurrentTime) {
                 const cur = playerRef.current.getCurrentTime();
                 const dur = playerRef.current.getDuration();
+                
+                // Anti-Skip Logic: Jika lompat lebih dari 2 detik ke depan, rewind!
+                if (cur > lastTimeRef.current + 2) {
+                    playerRef.current.seekTo(lastTimeRef.current);
+                    // Optional: Tampilkan warning kecil (console atau toast)
+                    console.log("Dilarang mempercepat video!");
+                } else {
+                    // Update last time dengan waktu sekarang
+                    lastTimeRef.current = cur;
+                }
+
                 if (dur > 0) {
                     const pct = (cur / dur) * 100;
                     setProgress(pct);
@@ -359,6 +451,13 @@ export const TabLiterasi = ({ user }: { user: User }) => {
         }, 1000);
         return () => clearInterval(timer);
     }, []);
+
+    const playVideoManual = () => {
+        if(playerRef.current && playerRef.current.playVideo) {
+            playerRef.current.playVideo();
+            setIsPlaying(true);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -382,26 +481,55 @@ export const TabLiterasi = ({ user }: { user: User }) => {
         Swal.fire('Mantap!', 'Jawaban literasi tersimpan.', 'success');
     };
 
-    if(!config) return <div className="p-10 text-center">Memuat...</div>;
+    if(!material) return <div className="p-10 text-center">Memuat...</div>;
+    
+    // Check if there is actual content
+    if (!material.youtubeUrl && (!material.questions || material.questions.length === 0)) {
+        return (
+            <div className="p-10 text-center animate-slide-up flex flex-col items-center justify-center min-h-[50vh]">
+                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400 text-3xl">
+                    <i className="fas fa-coffee"></i>
+                </div>
+                <h3 className="text-xl font-bold text-slate-700">Belum Ada Materi</h3>
+                <p className="text-slate-500 text-sm mt-2">Materi literasi untuk tanggal {material.date} belum diupload oleh guru.</p>
+            </div>
+        );
+    }
+
     if(submitted) return <div className="p-8 text-center animate-slide-up"><h3 className="text-2xl font-bold">Literasi Selesai ✅</h3></div>;
 
     return (
         <div className="p-6 pb-28 animate-slide-up">
-            <div className="glass-card rounded-[32px] p-2 mb-6 bg-slate-900 shadow-xl overflow-hidden aspect-video relative">
-                 <div id="youtube-player" className="w-full h-full"></div>
+            <div className="glass-card rounded-[32px] p-2 mb-4 bg-slate-900 shadow-xl overflow-hidden aspect-video relative group">
+                 {/* Video Player */}
+                 {videoId ? <div id="youtube-player" className="w-full h-full"></div> : <div className="w-full h-full flex items-center justify-center text-white">Video tidak valid</div>}
+                 
+                 {/* OVERLAY PELINDUNG: Mencegah klik video */}
+                 <div className="absolute inset-0 z-10 bg-transparent"></div>
             </div>
+
+            {/* Tombol Kontrol Eksternal */}
+            {!isPlaying && (
+                <button 
+                    onClick={playVideoManual} 
+                    className="w-full py-3 mb-6 bg-red-600 text-white font-bold rounded-xl shadow-lg flex items-center justify-center gap-2 hover:bg-red-700 transition"
+                >
+                    <i className="fas fa-play"></i> Putar Video
+                </button>
+            )}
             
             <div className="mb-6 px-2">
                 <div className="flex justify-between text-xs font-bold mb-1"><span>Progress</span><span>{Math.round(progress)}%</span></div>
                 <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                     <div className={`h-full transition-all duration-500 ${isUnlocked ? 'bg-green-500' : 'bg-yellow-500'}`} style={{width: `${Math.min(100, progress)}%`}}></div>
                 </div>
+                <p className="text-[10px] text-slate-400 mt-1 text-center italic">*Video tidak dapat dipercepat</p>
             </div>
 
             <div className="glass-card rounded-[32px] p-6 mb-6 bg-white/60 relative">
                 {!isUnlocked && <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center rounded-[32px]"><div className="bg-white p-3 rounded-xl shadow-lg font-bold text-slate-500"><i className="fas fa-lock mr-2"></i>Tonton Video Dulu</div></div>}
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {config.questions.map((q, i) => (
+                    {material.questions.map((q, i) => (
                         <div key={i}>
                             <label className="text-xs font-bold block mb-2">{i+1}. {q}</label>
                             <textarea className="w-full p-3 rounded-xl border border-slate-200" rows={3} value={answers[i]} onChange={e => {
