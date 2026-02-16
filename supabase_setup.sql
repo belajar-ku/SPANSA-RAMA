@@ -1,10 +1,13 @@
--- 1. CLEANUP (Hati-hati, data lama hilang)
+-- 1. SETUP EXTENSIONS
+create extension if not exists "pgcrypto";
+
+-- 2. CLEANUP (Hati-hati, data lama hilang)
 DROP TABLE IF EXISTS daily_logs CASCADE;
 DROP TABLE IF EXISTS ramadan_targets CASCADE;
 DROP TABLE IF EXISTS app_settings CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- 2. USERS
+-- 3. USERS
 CREATE TABLE users (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     username TEXT NOT NULL,
@@ -17,14 +20,14 @@ CREATE TABLE users (
     CONSTRAINT users_username_key UNIQUE (username)
 );
 
--- 3. APP SETTINGS
+-- 4. APP SETTINGS
 CREATE TABLE app_settings (
     key TEXT PRIMARY KEY,
     value JSONB NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. TARGETS
+-- 5. TARGETS
 CREATE TABLE ramadan_targets (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
@@ -37,7 +40,7 @@ CREATE TABLE ramadan_targets (
     CONSTRAINT ramadan_targets_user_id_key UNIQUE (user_id)
 );
 
--- 5. DAILY LOGS (JURNAL HARIAN & SKOR)
+-- 6. DAILY LOGS (JURNAL HARIAN & SKOR)
 CREATE TABLE daily_logs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
@@ -47,14 +50,15 @@ CREATE TABLE daily_logs (
     puasa_type TEXT, -- 'penuh', 'setengah', 'tidak'
     total_points INTEGER DEFAULT 0,
     
-    -- Data Detail (Sahur, Rincian Salat, Sedekah, dll) disimpan di sini
+    -- Data Detail (Sahur, Rincian Salat, Sedekah, dll) disimpan di sini sebagai JSON
     details JSONB DEFAULT '{}'::jsonb,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     CONSTRAINT daily_logs_user_date_key UNIQUE (user_id, date)
 );
 
--- 6. POLICIES
+-- 7. POLICIES (RLS)
+-- Karena aplikasi menggunakan 'auth' manual via query tabel, kita buka akses public untuk Key Anon.
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ramadan_targets ENABLE ROW LEVEL SECURITY;
@@ -65,13 +69,15 @@ CREATE POLICY "Public Access Settings" ON app_settings FOR ALL USING (true) WITH
 CREATE POLICY "Public Access Targets" ON ramadan_targets FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access Logs" ON daily_logs FOR ALL USING (true) WITH CHECK (true);
 
--- 7. SEED DATA
+-- 8. GRANT ACCESS
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
 
+-- 9. SEED DATA (Data Awal)
 -- Admin Default
 INSERT INTO users (username, password, name, role, gender)
-VALUES ('admin', 'Spansa@1', 'Administrator', 'admin', 'L');
+VALUES ('admin', 'Spansa@1', 'Administrator', 'admin', 'L')
+ON CONFLICT (username) DO NOTHING;
 
 -- Config Default
 INSERT INTO app_settings (key, value)
@@ -83,4 +89,5 @@ VALUES
 (
     'global_settings',
     '{"startRamadhanV1": "", "startRamadhanV2": "", "idulFitri": ""}'::jsonb
-);
+)
+ON CONFLICT (key) DO NOTHING;
