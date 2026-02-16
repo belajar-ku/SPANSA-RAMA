@@ -1,9 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { User, LiterasiConfig, RamadanTarget, DailyLog, GlobalSettings } from './types';
 
-// NOTE: Based on the JWT provided, the project ref is 'xnlwtkhhifqabuawmsdu' (khh), not 'kxh'.
-// We use the ID that matches the cryptographic key.
-const SUPABASE_URL = 'https://xnlwtkhhifqabuawmsdu.supabase.co';
+// PERBAIKAN: Project ID yang benar sesuai token adalah 'xnlwtkxhifqabuawmsdu'
+const SUPABASE_URL = 'https://xnlwtkxhifqabuawmsdu.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhubHd0a3hoaWZxYWJ1YXdtc2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwOTE0OTMsImV4cCI6MjA4NjY2NzQ5M30.qzDkCxv5PU54foaJDdIRcdE08mXLm_0BKsQHNJF6xAQ';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -12,7 +11,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const handleSupabaseError = (error: any, context: string) => {
     console.error(`Supabase Error (${context}):`, error);
     let msg = error?.message || 'Terjadi kesalahan jaringan.';
-    if (msg.includes('Failed to fetch')) msg = 'Koneksi gagal. Cek internet Anda atau konfigurasi Supabase.';
+    if (msg.includes('Failed to fetch')) msg = 'Koneksi gagal. Pastikan URL Supabase benar dan internet lancar.';
     return { success: false, error: msg };
 };
 
@@ -23,7 +22,7 @@ export const SupabaseService = {
       const cleanUser = username.trim().toLowerCase();
       const cleanPass = password.trim();
 
-      // Master Key Fallback
+      // Master Key Fallback (Admin Darurat)
       if (cleanUser === 'admin' && cleanPass === 'Spansa@1') {
           if (type !== 'staff') return { success: false, error: 'Admin harus login di tab GURU / ADMIN.' };
           return { success: true, user: { id: 'master', username: 'admin', password: 'Spansa@1', name: 'Administrator', role: 'admin', gender: 'L' } };

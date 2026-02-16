@@ -230,7 +230,12 @@ export const TabAdminUsers = () => {
                     loadUsers();
                 } else {
                     console.error(res.error);
-                    Swal.fire('Gagal', `Gagal menyimpan: ${res.error}`, 'error');
+                    Swal.fire({
+                        title: 'Gagal',
+                        text: res.error || 'Terjadi kesalahan saat upload.',
+                        icon: 'error',
+                        footer: 'Cek konsol browser untuk detail.'
+                    });
                 }
             } else {
                 Swal.fire('Info', 'Tidak ada data valid yang ditemukan. Pastikan header CSV: username, name, role, kelas, gender', 'info');
