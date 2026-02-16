@@ -424,8 +424,8 @@ export const TabAdminData = () => {
                     ) : (
                         <>
                             <div>
-                                <label className="text-xs font-bold text-slate-500">Link YouTube</label>
-                                <input type="text" className="w-full p-3 rounded-xl border" placeholder="https://youtube.com/watch?v=..." value={literasiMaterial.youtubeUrl} onChange={e => setLiterasiMaterial({...literasiMaterial, youtubeUrl: e.target.value})} />
+                                <label className="text-xs font-bold text-slate-500">Link YouTube / Kode Embed</label>
+                                <input type="text" className="w-full p-3 rounded-xl border" placeholder="Link YouTube atau <iframe..." value={literasiMaterial.youtubeUrl} onChange={e => setLiterasiMaterial({...literasiMaterial, youtubeUrl: e.target.value})} />
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 mb-2 block">Daftar Pertanyaan</label>

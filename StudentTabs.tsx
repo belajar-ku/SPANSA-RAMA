@@ -406,10 +406,21 @@ export const TabLiterasi = ({ user }: { user: User }) => {
         init();
     }, [user.id]);
 
-    // Improved Youtube ID Logic
-    const getYoutubeId = (url: string) => {
-        if(!url) return null;
-        // Handle short links (youtu.be), standard links, embed, and v/ format
+    // Improved Youtube ID Logic to handle Embed Code
+    const getYoutubeId = (input: string) => {
+        if(!input) return null;
+        
+        let url = input;
+        
+        // Check if input is an iframe code
+        if (input.includes('<iframe') && input.includes('src="')) {
+            const srcMatch = input.match(/src="([^"]+)"/);
+            if (srcMatch && srcMatch[1]) {
+                url = srcMatch[1];
+            }
+        }
+
+        // Handle standard URLs, short links, and embed URLs
         const match = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
         return match ? match[1] : null;
     };
