@@ -163,7 +163,7 @@ export const TabAdminUsers = () => {
 
                 const userObj: any = {};
                 headers.forEach((h, index) => {
-                    let val = values[index];
+                    let val: string | null = values[index];
                     // Handle empty strings for optional fields
                     if (val === '') val = null; 
                     userObj[h] = val;
@@ -221,18 +221,18 @@ export const TabAdminUsers = () => {
                     <input className="w-full p-3 rounded-xl border" placeholder="Password" value={formData.password || ''} onChange={e => setFormData({...formData, password: e.target.value})} />
                     <input className="w-full p-3 rounded-xl border" placeholder="Nama Lengkap" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} required />
                     <div className="flex gap-2">
-                         <select className="flex-1 p-3 rounded-xl border" value={formData.role} onChange={e => setFormData({...formData, role: e.target.value as UserRole})}>
+                         <select className="flex-1 p-3 rounded-xl border" value={formData.role || 'murid'} onChange={e => setFormData({...formData, role: e.target.value as UserRole})}>
                              <option value="murid">Murid</option>
                              <option value="guru">Guru</option>
                              <option value="admin">Admin</option>
                          </select>
-                         <select className="flex-1 p-3 rounded-xl border" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as Gender})}>
+                         <select className="flex-1 p-3 rounded-xl border" value={formData.gender || 'L'} onChange={e => setFormData({...formData, gender: e.target.value as Gender})}>
                              <option value="L">L</option>
                              <option value="P">P</option>
                          </select>
                     </div>
                     {formData.role === 'murid' && (
-                        <select className="w-full p-3 rounded-xl border" value={formData.kelas} onChange={e => setFormData({...formData, kelas: e.target.value})}>
+                        <select className="w-full p-3 rounded-xl border" value={formData.kelas || ''} onChange={e => setFormData({...formData, kelas: e.target.value})}>
                             {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                     )}

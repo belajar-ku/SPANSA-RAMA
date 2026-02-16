@@ -1,3 +1,4 @@
+
 export type Tab = 'harian' | 'literasi' | 'materi' | 'leaderboard' | 'profile' | 'monitoring' | 'users' | 'data';
 export type UserRole = 'murid' | 'guru' | 'admin';
 export type Gender = 'L' | 'P';
@@ -6,8 +7,8 @@ export interface User {
   id: string;
   name: string;
   role: UserRole;
-  kelas?: string; 
-  gender?: Gender;
+  kelas?: string | null; 
+  gender?: Gender | null;
   username?: string;
   password?: string;
 }
