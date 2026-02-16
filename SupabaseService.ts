@@ -185,12 +185,19 @@ export const SupabaseService = {
   },
 
   // --- LEADERBOARD ---
-  getLeaderboard: async () => {
+  getLeaderboard: async (kelas?: string) => {
       try {
-          const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points');
-          const { data: users } = await supabase.from('users').select('id, name, kelas').eq('role', 'murid');
+          let query = supabase.from('users').select('id, name, kelas').eq('role', 'murid');
+          if (kelas) {
+              query = query.eq('kelas', kelas);
+          }
+          const { data: users, error: err1 } = await query;
+          if (err1 || !users || users.length === 0) return [];
 
-          if (!logs || !users) return [];
+          const userIds = users.map(u => u.id);
+          const { data: logs, error: err2 } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
+
+          if (!logs) return users.map(u => ({ ...u, points: 0 }));
 
           const scores: Record<string, number> = {};
           logs.forEach(l => {
@@ -262,5 +269,22 @@ export const SupabaseService = {
         if (data) return { startDate: data.start_date, targetPuasa: data.target_puasa, targetTarawih: data.target_tarawih, targetTadarus: data.target_tadarus, targetKarakter: data.target_karakter };
         return null;
       } catch { return null; }
+  },
+
+  // --- PRAYER TIMES ---
+  getPrayerSchedule: async (dateStr: string) => {
+    try {
+        const [y, m, d] = dateStr.split('-');
+        const apiDate = `${d}-${m}-${y}`;
+        const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${apiDate}?city=Pasuruan&country=Indonesia&method=20`);
+        const json = await res.json();
+        if(json.code === 200 && json.data) {
+            return json.data.timings;
+        }
+        return null;
+    } catch (e) {
+        console.error("Failed to fetch prayer times", e);
+        return null;
+    }
   }
 };

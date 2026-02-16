@@ -117,9 +117,9 @@ const App = () => {
       setUser(null);
   };
 
-  const handleEditLog = (date: string) => {
+  const handleEditLog = (date: string, type: 'harian' | 'literasi') => {
       setSelectedDateForEdit(date);
-      setActiveTab('harian');
+      setActiveTab(type);
   };
 
   if (loading) return null;
@@ -133,6 +133,8 @@ const App = () => {
             onClick={() => {
                 setActiveTab(id);
                 if(id === 'harian') setSelectedDateForEdit(getWIBDate());
+                // Reset to current date for literasi if clicked directly from nav
+                if(id === 'literasi') setSelectedDateForEdit(getWIBDate());
             }} 
             className={`nav-item flex flex-col items-center justify-center w-full h-full ${isActive ? 'active' : ''}`}
           >
@@ -150,9 +152,9 @@ const App = () => {
 
         <main className="max-w-md mx-auto relative z-10">
             {activeTab === 'harian' && <TabHarian user={user} initialDate={selectedDateForEdit} />}
-            {activeTab === 'literasi' && <TabLiterasi user={user} />}
+            {activeTab === 'literasi' && <TabLiterasi user={user} initialDate={selectedDateForEdit} />}
             {activeTab === 'progress' && <TabProgress user={user} onEdit={handleEditLog} />}
-            {activeTab === 'leaderboard' && <TabLeaderboard />}
+            {activeTab === 'leaderboard' && <TabLeaderboard user={user} />}
             {activeTab === 'materi' && <TabMateri />}
             {activeTab === 'profile' && <TabProfile user={user} onLogout={handleLogout} />}
             
