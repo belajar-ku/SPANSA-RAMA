@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
 import { LoginPage } from './LoginPage';
-import { User, Tab, APP_LOGO_URL, RamadanTarget } from './types';
-import { TabHarian, TabLiterasi, TabMateri, TabProfile, TabLeaderboard } from './StudentTabs';
+import { User, Tab, APP_LOGO_URL, RamadanTarget, getWIBDate } from './types';
+import { TabHarian, TabLiterasi, TabMateri, TabProfile, TabLeaderboard, TabProgress } from './StudentTabs';
 import { TabAdminUsers, TabAdminData, TabMonitoring } from './AdminTabs';
 
-// --- Simple Components ---
+// --- Header Component ---
 const Header = ({ user, activeTab }: { user: User, activeTab: string }) => (
     <div className="glass-nav sticky top-0 z-40 px-6 py-4 flex justify-between items-center transition-all duration-300 shadow-sm">
       <div className="flex items-center gap-3">
@@ -24,6 +24,7 @@ const Header = ({ user, activeTab }: { user: User, activeTab: string }) => (
     </div>
   );
 
+// --- Target Modal ---
 const TargetModal = ({ user, onClose }: { user: User, onClose: () => void }) => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState<RamadanTarget>({ startDate: '', targetPuasa: '', targetTarawih: '', targetTadarus: '', targetKarakter: '' });
@@ -87,6 +88,7 @@ const App = () => {
   const [activeTab, setActiveTab] = useState<Tab>('harian');
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedDateForEdit, setSelectedDateForEdit] = useState(getWIBDate());
 
   useEffect(() => {
     const u = SupabaseService.getUser();
@@ -115,15 +117,31 @@ const App = () => {
       setUser(null);
   };
 
+  const handleEditLog = (date: string) => {
+      setSelectedDateForEdit(date);
+      setActiveTab('harian');
+  };
+
   if (loading) return null;
   if (!user) return <LoginPage onLogin={handleLogin} />;
 
-  const TabBtn = ({ id, icon, label }: { id: Tab, icon: string, label: string }) => (
-      <button onClick={() => setActiveTab(id)} className={`flex-1 flex flex-col items-center justify-center p-2 transition-colors ${activeTab === id ? 'text-primary-600 scale-105' : 'text-slate-400 hover:text-slate-500'}`}>
-          <i className={`fas ${icon} text-lg mb-1 ${activeTab === id ? 'drop-shadow-sm' : ''}`}></i>
-          <span className="text-[9px] font-bold tracking-wide">{label}</span>
-      </button>
-  );
+  // Aesthetic Nav Button
+  const TabBtn = ({ id, icon }: { id: Tab, icon: string }) => {
+      const isActive = activeTab === id;
+      return (
+          <button 
+            onClick={() => {
+                setActiveTab(id);
+                if(id === 'harian') setSelectedDateForEdit(getWIBDate());
+            }} 
+            className={`nav-item flex flex-col items-center justify-center w-full h-full ${isActive ? 'active' : ''}`}
+          >
+              <div className="nav-icon-container relative">
+                   <i className={`fas ${icon} text-xl ${isActive ? 'text-primary-500' : 'text-slate-400'}`}></i>
+              </div>
+          </button>
+      );
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-32">
@@ -131,8 +149,9 @@ const App = () => {
         {showTargetModal && <TargetModal user={user} onClose={() => setShowTargetModal(false)} />}
 
         <main className="max-w-md mx-auto relative z-10">
-            {activeTab === 'harian' && <TabHarian user={user} />}
+            {activeTab === 'harian' && <TabHarian user={user} initialDate={selectedDateForEdit} />}
             {activeTab === 'literasi' && <TabLiterasi user={user} />}
+            {activeTab === 'progress' && <TabProgress user={user} onEdit={handleEditLog} />}
             {activeTab === 'leaderboard' && <TabLeaderboard />}
             {activeTab === 'materi' && <TabMateri />}
             {activeTab === 'profile' && <TabProfile user={user} onLogout={handleLogout} />}
@@ -146,23 +165,27 @@ const App = () => {
             )}
         </main>
 
-        <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[95%] max-w-[400px] bg-white/80 backdrop-blur-md border border-white/50 shadow-2xl shadow-slate-300/50 rounded-[32px] p-2 z-50 flex items-center justify-between">
-             {user.role === 'murid' ? (
-                <>
-                    <TabBtn id="harian" icon="fa-home" label="Jurnal" />
-                    <TabBtn id="literasi" icon="fa-video" label="Literasi" />
-                    <TabBtn id="leaderboard" icon="fa-trophy" label="Top 50" />
-                    <TabBtn id="materi" icon="fa-mosque" label="Materi" />
-                    <TabBtn id="profile" icon="fa-user" label="Profil" />
-                </>
-             ) : (
-                <>
-                    <TabBtn id="monitoring" icon="fa-chart-pie" label="Monitor" />
-                    <TabBtn id="users" icon="fa-users" label="Users" />
-                    <TabBtn id="data" icon="fa-database" label="Data" />
-                    <TabBtn id="profile" icon="fa-user" label="Profil" />
-                </>
-             )}
+        {/* NEW FLOATING DOCK NAVIGATION */}
+        <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] h-16 nav-dock rounded-[24px] z-50 px-2">
+             <div className="flex justify-between items-center h-full w-full">
+                 {user.role === 'murid' ? (
+                    <>
+                        <TabBtn id="harian" icon="fa-home" />
+                        <TabBtn id="progress" icon="fa-chart-pie" />
+                        <TabBtn id="literasi" icon="fa-play-circle" />
+                        <TabBtn id="leaderboard" icon="fa-trophy" />
+                        <TabBtn id="materi" icon="fa-book-open" />
+                        <TabBtn id="profile" icon="fa-user" />
+                    </>
+                 ) : (
+                    <>
+                        <TabBtn id="monitoring" icon="fa-chart-pie" />
+                        <TabBtn id="users" icon="fa-users" />
+                        <TabBtn id="data" icon="fa-database" />
+                        <TabBtn id="profile" icon="fa-user" />
+                    </>
+                 )}
+             </div>
         </nav>
     </div>
   );

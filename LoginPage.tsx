@@ -69,7 +69,7 @@ export const LoginPage = ({ onLogin }: { onLogin: (u: User) => void }) => {
                   onClick={() => setTab('nisn')} 
                   className={`relative z-10 flex-1 py-3 text-[10px] font-black tracking-wider rounded-[20px] transition-all duration-300 ${tab === 'nisn' ? 'bg-white text-primary-600 shadow-lg scale-100' : 'text-slate-500 hover:text-slate-600'}`}
                 >
-                  <i className="fas fa-user-graduate mr-1"></i> SISWA
+                  <i className="fas fa-user-graduate mr-1"></i> MURID
                 </button>
                 <button 
                   onClick={() => setTab('staff')} 
@@ -84,7 +84,7 @@ export const LoginPage = ({ onLogin }: { onLogin: (u: User) => void }) => {
                 <div className="space-y-4">
                    <div className="relative">
                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-4 mb-1 block">
-                          {tab === 'nisn' ? 'NISN Siswa' : 'Username'}
+                          {tab === 'nisn' ? 'NISN Murid' : 'Username'}
                        </label>
                        <input 
                              type="text"

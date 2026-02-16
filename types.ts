@@ -1,5 +1,5 @@
 
-export type Tab = 'harian' | 'literasi' | 'materi' | 'leaderboard' | 'profile' | 'monitoring' | 'users' | 'data';
+export type Tab = 'harian' | 'literasi' | 'materi' | 'leaderboard' | 'profile' | 'monitoring' | 'users' | 'data' | 'progress';
 export type UserRole = 'murid' | 'guru' | 'admin';
 export type Gender = 'L' | 'P';
 
@@ -104,3 +104,8 @@ export const RAMADAN_QUOTES = [
     "Siapkan diri menyambut kemenangan yang fitri.",
     "Taqabbalallahu minna wa minkum, semoga amal diterima."
 ];
+
+// Helper Timezone Indonesia Barat
+export const getWIBDate = () => {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+};

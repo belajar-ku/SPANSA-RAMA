@@ -110,6 +110,15 @@ export const SupabaseService = {
       } catch(e) { console.error(e); return null; }
   },
 
+  // [NEW] Get Recap for Progress
+  getStudentRecap: async (userId: string) => {
+      try {
+          const { data, error } = await supabase.from('daily_logs').select('date, total_points, details').eq('user_id', userId).order('date');
+          if(error) throw error;
+          return (data || []) as any[];
+      } catch(e) { console.error(e); return []; }
+  },
+
   saveDailyLog: async (log: DailyLog) => {
       try {
           // Logic Hitung Poin Otomatis

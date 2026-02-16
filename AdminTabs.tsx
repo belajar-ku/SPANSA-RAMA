@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
-import { User, UserRole, Gender, CLASSES, LiterasiMaterial, GlobalSettings } from './types';
+import { User, UserRole, Gender, CLASSES, LiterasiMaterial, GlobalSettings, getWIBDate } from './types';
 
 // --- Tab Monitoring (Guru) ---
 export const TabMonitoring = () => {
     const [kelas, setKelas] = useState('7A');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(getWIBDate());
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -67,7 +67,7 @@ export const TabMonitoring = () => {
                                         </div>
                                     </div>
                                 ))}
-                                {data.length === 0 && <div className="p-8 text-center text-slate-400">Tidak ada siswa.</div>}
+                                {data.length === 0 && <div className="p-8 text-center text-slate-400">Tidak ada murid.</div>}
                         </div>
                     )}
                 </div>
@@ -119,7 +119,7 @@ export const TabAdminUsers = () => {
     const handleDownloadTemplate = () => {
         const headers = "username,password,name,role,kelas,gender";
         const example = 
-`1234567890,Spansa@1,Ahmad Siswa,murid,7A,L
+`1234567890,Spansa@1,Ahmad Murid,murid,7A,L
 000123456,Spansa@1,Bapak Guru (Wali Kelas 7A),guru,7A,L
 000987654,Spansa@1,Ibu Guru (Bukan Wali),guru,,P`;
         
@@ -314,7 +314,7 @@ export const TabAdminUsers = () => {
                 </div>
             </div>
 
-            <input className="w-full p-3 rounded-[20px] border border-slate-200 mb-4 focus:ring-2 focus:ring-primary-200 outline-none" placeholder="Cari nama siswa/guru..." value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="w-full p-3 rounded-[20px] border border-slate-200 mb-4 focus:ring-2 focus:ring-primary-200 outline-none" placeholder="Cari nama murid/guru..." value={search} onChange={e => setSearch(e.target.value)} />
             
             <div className="glass-card rounded-[24px] overflow-hidden max-h-[50vh] overflow-y-auto">
                 {filtered.map(u => (
@@ -343,7 +343,7 @@ export const TabAdminData = () => {
     const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({ startRamadhanV1: '', startRamadhanV2: '', idulFitri: '' });
     
     // State for Literasi Material
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState(getWIBDate());
     const [literasiMaterial, setLiterasiMaterial] = useState<LiterasiMaterial>({ date: '', youtubeUrl: '', questions: [] });
     const [loadingLiterasi, setLoadingLiterasi] = useState(false);
 
