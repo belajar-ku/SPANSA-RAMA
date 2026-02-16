@@ -198,7 +198,7 @@ export const SupabaseService = {
           const userIds = users.map(u => u.id);
 
           // 2. Get Logs only for those users
-          // REMOVED 'error: err2' to fix build error
+          // PERBAIKAN: Hapus error: err2 yang tidak terpakai
           const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
           
           if (!logs) return users.map(u => ({ ...u, points: 0 }));

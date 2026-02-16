@@ -51,7 +51,6 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const isTimePassed = (targetTimeStr: string, addMinutes = 0) => {
       if (!targetTimeStr) return true; // Fail safe
       
-      // Check if Selected Date is today. 
       const todayStr = getWIBDate();
       if (selectedDate < todayStr) return true; // Past dates unlocked
       if (selectedDate > todayStr) return false; // Future dates locked
@@ -67,15 +66,11 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
 
   // Input Validation Helper (STRICT VALIDATION)
   const isLocked = (type: string) => {
-      // If user is editing a future date, LOCK EVERYTHING except if specifically handled
       const todayStr = getWIBDate();
       if (selectedDate > todayStr) return true;
-      
-      // If past date, UNLOCK EVERYTHING
       if (selectedDate < todayStr) return false;
 
-      // If Today, use Prayer Times
-      if (!prayerTimes) return false; // Fail safe if API error
+      if (!prayerTimes) return false; 
 
       switch (type) {
           case 'Buka': return !isTimePassed(prayerTimes.Maghrib);
@@ -85,9 +80,9 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
           case 'Magrib': return !isTimePassed(prayerTimes.Maghrib);
           case 'Isya': return !isTimePassed(prayerTimes.Isha);
           case 'Tarawih': 
-          case 'Witir': return !isTimePassed(prayerTimes.Isha, 30); // 30 mins after Isya
+          case 'Witir': return !isTimePassed(prayerTimes.Isha, 30);
           case 'Duha': return !isTimePassed('06:00');
-          case 'Tahajud': return false; // Always unlocked
+          case 'Tahajud': return false;
           default: return false;
       }
   };
@@ -106,7 +101,6 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
      setSedekahDiri(''); setSedekahRumah(''); setSedekahMasyarakat('');
      setBelajarMapel(''); setBelajarTopik('');
 
-     // Fetch Prayer Times for Selected Date
      SupabaseService.getPrayerSchedule(selectedDate).then(pt => {
         setPrayerTimes(pt);
      });
@@ -808,7 +802,6 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Pass the user's class to the service
         SupabaseService.getLeaderboard(user?.kelas || undefined).then(data => {
             setUsers(data);
             setLoading(false);
