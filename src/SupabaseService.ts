@@ -184,10 +184,9 @@ export const SupabaseService = {
       } catch(e) { console.error(e); return []; }
   },
 
-  // --- LEADERBOARD (UPDATED: Filter by Class) ---
+  // --- LEADERBOARD ---
   getLeaderboard: async (kelas?: string) => {
       try {
-          // 1. Get Users filtered by class
           let query = supabase.from('users').select('id, name, kelas').eq('role', 'murid');
           if (kelas) {
               query = query.eq('kelas', kelas);
@@ -196,25 +195,20 @@ export const SupabaseService = {
           if (err1 || !users || users.length === 0) return [];
 
           const userIds = users.map(u => u.id);
-
-          // 2. Get Logs only for those users
-          // PERBAIKAN: Hapus error: err2 yang tidak terpakai
+          // FIX: Removing unused 'error: err2' destructuring
           const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
-          
+
           if (!logs) return users.map(u => ({ ...u, points: 0 }));
 
-          // 3. Calculate Scores
           const scores: Record<string, number> = {};
           logs.forEach(l => {
               scores[l.user_id] = (scores[l.user_id] || 0) + (l.total_points || 0);
           });
 
-          // 4. Sort and Return
           return users.map(u => ({
               ...u,
               points: scores[u.id] || 0
-          })).sort((a, b) => b.points - a.points);
-
+          })).sort((a, b) => b.points - a.points).slice(0, 50); // Top 50
       } catch(e) { console.error(e); return []; }
   },
 
