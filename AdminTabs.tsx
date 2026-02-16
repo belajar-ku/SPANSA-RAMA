@@ -93,11 +93,20 @@ export const TabAdminUsers = () => {
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        await SupabaseService.saveUser(formData as User);
-        setIsEditing(false);
-        setFormData({ role: 'murid', gender: 'L', kelas: '7A', password: 'Spansa@1' });
-        loadUsers();
-        Swal.fire('Sukses', 'User tersimpan!', 'success');
+        
+        // Show loading
+        Swal.fire({ title: 'Menyimpan...', didOpen: () => Swal.showLoading() });
+        
+        const res = await SupabaseService.saveUser(formData as User);
+        
+        if (res.success) {
+            setIsEditing(false);
+            setFormData({ role: 'murid', gender: 'L', kelas: '7A', password: 'Spansa@1' });
+            loadUsers();
+            Swal.fire('Sukses', 'User tersimpan!', 'success');
+        } else {
+            Swal.fire('Gagal', res.error || 'Terjadi kesalahan sistem', 'error');
+        }
     };
 
     const handleDelete = async (id: string) => {
@@ -108,7 +117,6 @@ export const TabAdminUsers = () => {
 
     // --- CSV UPLOAD FEATURE ---
     const handleDownloadTemplate = () => {
-        // Headers + Example Row
         const headers = "username,password,name,role,kelas,gender";
         const example = 
 `1234567890,Spansa@1,Ahmad Siswa,murid,7A,L
@@ -116,7 +124,6 @@ export const TabAdminUsers = () => {
 000987654,Spansa@1,Ibu Guru (Bukan Wali),guru,,P`;
         
         const csvContent = "data:text/csv;charset=utf-8," + headers + "\n" + example;
-        
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -132,10 +139,15 @@ export const TabAdminUsers = () => {
 
         const reader = new FileReader();
         reader.onload = async (evt) => {
-            const text = evt.target?.result as string;
+            let text = evt.target?.result as string;
             if (!text) return;
 
-            // 1. Split lines (handle Windows \r\n and Unix \n)
+            // 1. Remove BOM (Byte Order Mark) usually added by Excel
+            if (text.charCodeAt(0) === 0xFEFF) {
+                text = text.slice(1);
+            }
+
+            // 2. Split lines
             const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             
             if (lines.length < 2) {
@@ -143,43 +155,64 @@ export const TabAdminUsers = () => {
                 return;
             }
 
-            // 2. Detect Delimiter (Comma or Semicolon)
+            // 3. Detect Delimiter
             const firstLine = lines[0];
             const delimiter = firstLine.includes(';') ? ';' : ',';
 
-            // 3. Parse Headers
-            const headers = firstLine.split(delimiter).map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+            // 4. Parse Headers (Robust cleaning)
+            const headers = firstLine.split(delimiter).map(h => 
+                h.trim().toLowerCase().replace(/^"|"$/g, '').replace(/\s+/g, '') // remove spaces
+            );
+            
+            // Map common header names to User interface keys
+            const headerMap: Record<string, keyof User> = {
+                'username': 'username', 'nisn': 'username', 'nis': 'username',
+                'password': 'password', 'pass': 'password',
+                'name': 'name', 'nama': 'name', 'namalengkap': 'name',
+                'role': 'role', 'jabatan': 'role',
+                'kelas': 'kelas', 'class': 'kelas',
+                'gender': 'gender', 'jk': 'gender', 'jeniskelamin': 'gender'
+            };
+
             const newUsers: Partial<User>[] = [];
             
-            // 4. Parse Rows
+            // 5. Parse Rows
             for (let i = 1; i < lines.length; i++) {
-                // Split by delimiter, handle quotes if necessary (simple split here)
                 const values = lines[i].split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
                 
-                if (values.length !== headers.length) {
-                    console.warn(`Skipping line ${i + 1}: Column mismatch`);
-                    continue; 
-                }
+                // Skip invalid lines
+                if (values.length < 2) continue;
 
                 const userObj: any = {};
-                headers.forEach((h, index) => {
+                
+                headers.forEach((rawHeader, index) => {
+                    const key = headerMap[rawHeader] || rawHeader;
                     let val: string | null = values[index];
-                    // Handle empty strings for optional fields
-                    if (val === '') val = null; 
-                    userObj[h] = val;
+                    
+                    // Handle missing columns in row
+                    if (val === undefined) val = null;
+                    else if (val === '') val = null;
+
+                    userObj[key] = val;
                 });
                 
-                // Validate
-                if (!userObj.username || !userObj.name || !userObj.role) {
-                     continue; // Skip invalid rows
+                // Validate Mandatory Fields
+                if (!userObj.username || !userObj.name) {
+                     continue; 
                 }
 
-                // Normalisasi Data
-                userObj.role = userObj.role.toLowerCase();
-                if (!['murid', 'guru', 'admin'].includes(userObj.role)) {
-                    userObj.role = 'murid'; // Default fallback
-                }
+                // Normalize Data
+                // Role
+                const r = userObj.role ? userObj.role.toLowerCase() : 'murid';
+                userObj.role = ['admin','guru','murid'].includes(r) ? r : 'murid';
                 
+                // Gender
+                const g = userObj.gender ? userObj.gender.toUpperCase().charAt(0) : 'L';
+                userObj.gender = ['L','P'].includes(g) ? g : 'L';
+
+                // Kelas (ensure null if empty)
+                if (!userObj.kelas || userObj.kelas === '-') userObj.kelas = null;
+
                 newUsers.push(userObj as User);
             }
 
@@ -187,6 +220,7 @@ export const TabAdminUsers = () => {
                 Swal.fire({
                     title: 'Memproses Data...',
                     text: `Mengupload ${newUsers.length} user...`,
+                    allowOutsideClick: false,
                     didOpen: () => Swal.showLoading()
                 });
 
@@ -195,10 +229,11 @@ export const TabAdminUsers = () => {
                     Swal.fire('Berhasil', `${newUsers.length} user berhasil ditambahkan!`, 'success');
                     loadUsers();
                 } else {
+                    console.error(res.error);
                     Swal.fire('Gagal', `Gagal menyimpan: ${res.error}`, 'error');
                 }
             } else {
-                Swal.fire('Info', 'Tidak ada data valid yang ditemukan. Cek format delimiter (koma/titik koma).', 'info');
+                Swal.fire('Info', 'Tidak ada data valid yang ditemukan. Pastikan header CSV: username, name, role, kelas, gender', 'info');
             }
             
             // Reset input

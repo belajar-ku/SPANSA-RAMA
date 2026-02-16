@@ -38,10 +38,26 @@ export const SupabaseService = {
   getUsers: async () => { const { data } = await supabase.from('users').select('*').order('name'); return (data || []) as User[]; },
   
   saveUser: async (user: User) => {
-      const p = { ...user, username: user.username?.toLowerCase() || '' };
+      // 1. Prepare Payload
+      const p = { ...user };
+      
+      // Ensure username is lowercase
+      if (p.username) p.username = p.username.toLowerCase().trim();
+      
+      // Remove ID if it's empty/new (let DB generate it)
       if (!p.id) delete (p as any).id;
+      
+      // Default password
       if (!p.password) p.password = 'Spansa@1';
-      return await supabase.from('users').upsert(p);
+
+      // 2. Upsert with explicit conflict resolution on 'username'
+      const { error } = await supabase.from('users').upsert(p, { onConflict: 'username' });
+      
+      if (error) {
+          console.error("Supabase Save Error:", error);
+          return { success: false, error: error.message };
+      }
+      return { success: true };
   },
 
   bulkCreateUsers: async (users: Partial<User>[]) => {
@@ -56,7 +72,10 @@ export const SupabaseService = {
       });
 
       // Using upsert to handle duplicates (update if exists) or insert if new
+      // IMPORTANT: onConflict must match a UNIQUE constraint in Postgres (username)
       const { error } = await supabase.from('users').upsert(cleanedUsers, { onConflict: 'username' });
+      
+      if (error) console.error("Bulk Upload Error:", error);
       return { success: !error, error: error?.message };
   },
 
