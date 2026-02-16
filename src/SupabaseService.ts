@@ -198,7 +198,7 @@ export const SupabaseService = {
           const userIds = users.map(u => u.id);
 
           // 2. Get Logs only for those users
-          // Removed unused 'error: err2' destructuring
+          // REMOVED 'error: err2' to fix build error
           const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
           
           if (!logs) return users.map(u => ({ ...u, points: 0 }));
@@ -281,8 +281,6 @@ export const SupabaseService = {
   // --- PRAYER TIMES ---
   getPrayerSchedule: async (dateStr: string) => {
     try {
-        // Fetch Pasuruan Prayer Times
-        // Format dateStr (YYYY-MM-DD) to DD-MM-YYYY for Aladhan API
         const [y, m, d] = dateStr.split('-');
         const apiDate = `${d}-${m}-${y}`;
         const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${apiDate}?city=Pasuruan&country=Indonesia&method=20`);

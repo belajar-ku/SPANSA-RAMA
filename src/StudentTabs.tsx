@@ -384,6 +384,63 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              </div>
           </div>
 
+          {/* Misi Tadarus */}
+          <div className="glass-card p-1.5 rounded-[28px]">
+             <div className="bg-gradient-to-br from-purple-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
+                 <h3 className="font-bold text-purple-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-quran text-purple-500"></i> Misi Tadarus</h3>
+                 <div className="space-y-3">
+                     <select className="w-full p-3 bg-white border border-purple-100 rounded-xl text-sm font-bold text-slate-700 outline-none" value={tadarusStatus} onChange={(e) => setTadarusStatus(e.target.value)}>
+                         <option value="" disabled hidden>-- Apakah membaca Al-Qur'an? --</option>
+                         <option value="Ya">✅ Ya, Membaca Al-Qur'an</option>
+                         <option value="Tidak">❌ Tidak / Berhalangan</option>
+                     </select>
+                     {tadarusStatus === 'Ya' && (
+                         <div className="animate-slide-up">
+                             <input type="text" className="w-full p-3 bg-purple-50 border border-purple-100 rounded-xl text-sm placeholder:text-purple-300" placeholder="Surah & Ayat berapa?" value={tadarusNote} onChange={(e) => setTadarusNote(e.target.value)} />
+                         </div>
+                     )}
+                 </div>
+             </div>
+          </div>
+
+          {/* Misi Kebaikan (Sedekah) */}
+          <div className="glass-card p-1.5 rounded-[28px]">
+             <div className="bg-gradient-to-br from-rose-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
+                 <h3 className="font-bold text-rose-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-hand-holding-heart text-rose-500"></i> Misi Kebaikan</h3>
+                 <div className="space-y-3">
+                    <div>
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">Untuk Diri Sendiri</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Bersyukur, mandi pagi..." value={sedekahDiri} onChange={(e) => setSedekahDiri(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">Untuk Keluarga/Rumah</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Bantu cuci piring..." value={sedekahRumah} onChange={(e) => setSedekahRumah(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">Untuk Masyarakat/Teman</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Infaq masjid, senyum..." value={sedekahMasyarakat} onChange={(e) => setSedekahMasyarakat(e.target.value)} />
+                    </div>
+                 </div>
+             </div>
+          </div>
+
+          {/* Jurnal Belajar */}
+          <div className="glass-card p-1.5 rounded-[28px]">
+             <div className="bg-gradient-to-br from-blue-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
+                 <h3 className="font-bold text-blue-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-book-open text-blue-500"></i> Jurnal Belajar</h3>
+                 <div className="space-y-3">
+                     <div>
+                         <label className="text-[10px] font-bold text-blue-400 uppercase mb-1 block">Mata Pelajaran</label>
+                         <input type="text" className="w-full p-3 bg-white border border-blue-100 rounded-xl text-sm" placeholder="Contoh: Matematika" value={belajarMapel} onChange={(e) => setBelajarMapel(e.target.value)} />
+                     </div>
+                     <div>
+                         <label className="text-[10px] font-bold text-blue-400 uppercase mb-1 block">Topik / Materi</label>
+                         <input type="text" className="w-full p-3 bg-white border border-blue-100 rounded-xl text-sm" placeholder="Contoh: Aljabar" value={belajarTopik} onChange={(e) => setBelajarTopik(e.target.value)} />
+                     </div>
+                 </div>
+             </div>
+          </div>
+
           <div className="space-y-3">
             <button type="button" onClick={() => handleAction(true)} className="w-full py-3 bg-amber-400 text-amber-900 font-bold text-lg rounded-[24px] shadow-lg border-b-4 border-amber-600"><i className="fas fa-save mr-2"></i> Simpan Sementara</button>
             <button type="button" onClick={() => handleAction(false)} className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-bold text-lg rounded-[24px] shadow-lg">Kirim Laporan</button>
