@@ -56,12 +56,21 @@ export const SupabaseService = {
   
   saveUser: async (user: User) => {
       try {
+          // 1. Prepare Payload
           const p = { ...user };
+          
+          // Ensure username is lowercase
           if (p.username) p.username = p.username.toLowerCase().trim();
+          
+          // Remove ID if it's empty/new (let DB generate it)
           if (!p.id) delete (p as any).id;
+          
+          // Default password
           if (!p.password) p.password = 'Spansa@1';
 
+          // 2. Upsert with explicit conflict resolution on 'username'
           const { error } = await supabase.from('users').upsert(p, { onConflict: 'username' });
+          
           if (error) throw error;
           return { success: true, error: null };
       } catch (e) { return handleSupabaseError(e, 'Save User'); }
@@ -69,14 +78,17 @@ export const SupabaseService = {
 
   bulkCreateUsers: async (users: Partial<User>[]) => {
       try {
+          // Clean data: lowercase username, remove empty IDs
           const cleanedUsers = users.map(u => {
-              const { id, ...rest } = u;
+              const { id, ...rest } = u; // Exclude ID to allow auto-generation
               return {
                   ...rest,
                   username: rest.username?.trim().toLowerCase(),
-                  password: rest.password || 'Spansa@1'
+                  password: rest.password || 'Spansa@1' // Default password if empty
               };
           });
+
+          // Using upsert to handle duplicates (update if exists) or insert if new
           const { error } = await supabase.from('users').upsert(cleanedUsers, { onConflict: 'username' });
           if (error) throw error;
           return { success: true, error: null };
@@ -109,28 +121,36 @@ export const SupabaseService = {
 
   saveDailyLog: async (log: DailyLog) => {
       try {
+          // Logic Hitung Poin Otomatis
           let pts = 0;
           const d = log.details;
 
-          // Hitung Poin
+          // Puasa: Penuh=100 (Request: remove Setengah)
           if (d.puasaStatus === 'Penuh') pts += 100;
+
           if (d.sahurStatus === 'Ya') pts += 10;
           
           if (d.sholatStatus) {
-             Object.values(d.sholatStatus).forEach(s => { if (s && s !== 'Lewat') pts += 4; });
+             Object.values(d.sholatStatus).forEach(s => {
+                 if (s && s !== 'Lewat') pts += 4;
+             });
           }
 
           if (d.sunahStatus) {
-              Object.values(d.sunahStatus).forEach(s => { if (s && s !== 'Tidak Melaksanakan') pts += 3; });
+              Object.values(d.sunahStatus).forEach(s => {
+                 if (s && s !== 'Tidak Melaksanakan') pts += 3; 
+              });
           }
 
           if (d.tadarusStatus && d.tadarusStatus !== 'Tidak') pts += 10;
+
           if (d.sedekahDiri || d.sedekahRumah || d.sedekahMasyarakat) pts += 5;
           if (d.belajarTopik) pts += 5;
 
           const payload = { ...log, total_points: pts };
           if (!payload.id) delete (payload as any).id;
 
+          // PENTING: Gunakan onConflict user_id,date agar tidak error duplicate key
           const { error } = await supabase.from('daily_logs').upsert(payload, { onConflict: 'user_id,date' });
           if (error) throw error;
           return true;
@@ -140,13 +160,16 @@ export const SupabaseService = {
   // --- MONITORING (Guru) ---
   getMonitoringData: async (kelas: string, date: string) => {
       try {
+          // 1. Get all students in class
           const { data: students, error: err1 } = await supabase.from('users').select('id, name').eq('role', 'murid').eq('kelas', kelas).order('name');
           if (err1) throw err1;
           if (!students) return [];
 
+          // 2. Get logs for this date
           const { data: logs, error: err2 } = await supabase.from('daily_logs').select('*').eq('date', date).in('user_id', students.map(s => s.id));
           if(err2) throw err2;
           
+          // 3. Merge
           return students.map(s => {
               const log = logs?.find(l => l.user_id === s.id);
               return {
@@ -164,6 +187,7 @@ export const SupabaseService = {
   // --- LEADERBOARD (UPDATED: Filter by Class) ---
   getLeaderboard: async (kelas?: string) => {
       try {
+          // 1. Get Users filtered by class
           let query = supabase.from('users').select('id, name, kelas').eq('role', 'murid');
           if (kelas) {
               query = query.eq('kelas', kelas);
@@ -172,15 +196,20 @@ export const SupabaseService = {
           if (err1 || !users || users.length === 0) return [];
 
           const userIds = users.map(u => u.id);
-          const { data: logs, error: err2 } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
-          
-          if (err2 || !logs) return users.map(u => ({ ...u, points: 0 }));
 
+          // 2. Get Logs only for those users
+          // Removed unused 'error: err2' destructuring
+          const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
+          
+          if (!logs) return users.map(u => ({ ...u, points: 0 }));
+
+          // 3. Calculate Scores
           const scores: Record<string, number> = {};
           logs.forEach(l => {
               scores[l.user_id] = (scores[l.user_id] || 0) + (l.total_points || 0);
           });
 
+          // 4. Sort and Return
           return users.map(u => ({
               ...u,
               points: scores[u.id] || 0
@@ -190,8 +219,10 @@ export const SupabaseService = {
   },
 
   // --- CONFIG & LITERASI ---
+  // [DEPRECATED] getLiterasiConfig but kept for legacy check
   getLiterasiConfig: async () => { return { youtubeUrl: '', questions: [] } },
 
+  // [NEW] Get Material By Date
   getLiterasiMaterial: async (date: string): Promise<LiterasiMaterial> => {
       try {
         const { data } = await supabase.from('literasi_materials').select('*').eq('date', date).maybeSingle();
@@ -207,6 +238,7 @@ export const SupabaseService = {
       } catch { return { date, youtubeUrl: '', questions: [] }; }
   },
 
+  // [NEW] Save Material
   saveLiterasiMaterial: async (material: LiterasiMaterial) => {
       const payload = {
           date: material.date,
@@ -228,6 +260,7 @@ export const SupabaseService = {
   
   // --- TARGETS ---
   saveRamadanTarget: async (userId: string, target: RamadanTarget) => {
+      // PENTING: Gunakan onConflict user_id agar data lama terupdate
       await supabase.from('ramadan_targets').upsert({
           user_id: userId,
           start_date: target.startDate,
@@ -248,6 +281,8 @@ export const SupabaseService = {
   // --- PRAYER TIMES ---
   getPrayerSchedule: async (dateStr: string) => {
     try {
+        // Fetch Pasuruan Prayer Times
+        // Format dateStr (YYYY-MM-DD) to DD-MM-YYYY for Aladhan API
         const [y, m, d] = dateStr.split('-');
         const apiDate = `${d}-${m}-${y}`;
         const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${apiDate}?city=Pasuruan&country=Indonesia&method=20`);
