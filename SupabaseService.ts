@@ -116,24 +116,26 @@ export const SupabaseService = {
           let pts = 0;
           const d = log.details;
 
-          if (d.puasaStatus === 'Penuh') pts += 50;
-          else if (d.puasaStatus === 'Setengah') pts += 25;
+          // Puasa: Penuh=100 (Request: remove Setengah)
+          if (d.puasaStatus === 'Penuh') pts += 100;
 
           if (d.sahurStatus === 'Ya') pts += 10;
           
           if (d.sholatStatus) {
              Object.values(d.sholatStatus).forEach(s => {
-                 if (s !== 'Lewat') pts += 4;
+                 if (s && s !== 'Lewat') pts += 4;
              });
           }
 
           if (d.sunahStatus) {
               Object.values(d.sunahStatus).forEach(s => {
-                 if (s !== 'Tidak Melaksanakan') pts += 3; 
+                 if (s && s !== 'Tidak Melaksanakan') pts += 3; 
               });
           }
 
-          if (d.sedekahDiri || d.sedekahRumah) pts += 5;
+          if (d.tadarusStatus && d.tadarusStatus !== 'Tidak') pts += 10;
+
+          if (d.sedekahDiri || d.sedekahRumah || d.sedekahMasyarakat) pts += 5;
           if (d.belajarTopik) pts += 5;
 
           const payload = { ...log, total_points: pts };

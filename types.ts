@@ -13,11 +13,6 @@ export interface User {
   password?: string;
 }
 
-export interface LiterasiConfig {
-    youtubeUrl: string;
-    questions: string[];
-}
-
 // Interface baru untuk Literasi per Tanggal
 export interface LiterasiMaterial {
     id?: string;
@@ -41,18 +36,25 @@ export interface RamadanTarget {
 }
 
 export interface DailyLogDetails {
-    puasaStatus?: 'Penuh' | 'Setengah' | 'Tidak';
+    puasaStatus?: 'Penuh' | 'Tidak'; // Removed 'Setengah'
     alasanTidakPuasa?: string;
     isHaid?: boolean;
+    
     sahurStatus?: string;
     sahurLokasi?: string;
     sahurWaktu?: string;
     bukaStatus?: string;
+    
     sholatStatus?: Record<string, string>;
     sunahStatus?: Record<string, string>;
+    
+    tadarusStatus?: string; // New
+    tadarusNote?: string; // New
+    
     sedekahDiri?: string;
     sedekahRumah?: string;
     sedekahMasyarakat?: string;
+    
     belajarMapel?: string;
     belajarTopik?: string;
     literasiResponse?: string[];
@@ -62,9 +64,9 @@ export interface DailyLog {
     id?: string;
     user_id: string;
     date: string;
-    puasa_type: 'penuh' | 'setengah' | 'tidak'; // Summary field
-    total_points: number; // Summary field
-    details: DailyLogDetails; // Complex data
+    puasa_type: 'penuh' | 'tidak'; // Updated
+    total_points: number; 
+    details: DailyLogDetails; 
 }
 
 export const CLASSES = ['7A', '7B', '7C', '8A', '8B', '8C', '9A', '9B', '9C'];
