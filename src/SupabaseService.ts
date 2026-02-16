@@ -195,7 +195,7 @@ export const SupabaseService = {
           if (err1 || !users || users.length === 0) return [];
 
           const userIds = users.map(u => u.id);
-          // FIXED: Removed 'error: err2' which caused build failure
+          // FIXED: Removed 'error: err2' which caused build failure TS6133
           const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
 
           if (!logs) return users.map(u => ({ ...u, points: 0 }));
