@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { User, LiterasiConfig, LiterasiMaterial, RamadanTarget, DailyLog, GlobalSettings } from './types';
+import { User, LiterasiMaterial, RamadanTarget, DailyLog, GlobalSettings } from './types';
 
 // PERBAIKAN: Project ID yang benar sesuai token adalah 'xnlwtkxhifqabuawmsdu'
 const SUPABASE_URL = 'https://xnlwtkxhifqabuawmsdu.supabase.co';
