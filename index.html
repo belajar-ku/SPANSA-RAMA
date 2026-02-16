@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>SPANSA RAMA - SMPN 1 Pasuruan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          fontFamily: { 
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          extend: {
+            colors: {
+              primary: { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e', 950: '#082f49' },
+              glass: {
+                100: 'rgba(255, 255, 255, 0.1)',
+                200: 'rgba(255, 255, 255, 0.2)',
+                300: 'rgba(255, 255, 255, 0.3)',
+                border: 'rgba(255, 255, 255, 0.4)',
+                surface: 'rgba(255, 255, 255, 0.65)',
+              }
+            },
+            boxShadow: {
+              'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.1)',
+              'glass-hover': '0 8px 32px 0 rgba(31, 38, 135, 0.2)',
+              '3d-button': '0 4px 0px 0px rgba(2, 132, 199, 1), 0 10px 10px rgba(0,0,0,0.1)',
+              '3d-button-active': '0 0px 0px 0px rgba(2, 132, 199, 1), 0 0px 0px rgba(0,0,0,0.1)',
+              'neumorph': '20px 20px 60px #d1d9e6, -20px -20px 60px #ffffff',
+              'inner-glow': 'inset 0 0 20px rgba(255, 255, 255, 0.5)',
+            },
+            backgroundImage: {
+              'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.1))',
+              'mesh': 'radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%)',
+            },
+            animation: {
+              'float': 'float 6s ease-in-out infinite',
+              'slide-up': 'slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'pulse-glow': 'pulseGlow 2s infinite',
+            },
+            keyframes: {
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-15px)' },
+              },
+              slideUp: {
+                '0%': { opacity: '0', transform: 'translateY(40px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              },
+              pulseGlow: {
+                '0%, 100%': { boxShadow: '0 0 20px rgba(56, 189, 248, 0.5)' },
+                '50%': { boxShadow: '0 0 40px rgba(56, 189, 248, 0.8)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      body { 
+        -webkit-tap-highlight-color: transparent; 
+        background: #f0f4f8;
+        color: #1e293b;
+        overflow-x: hidden;
+      }
+      
+      /* Dynamic Background */
+      .bg-blob {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        background: 
+          radial-gradient(circle at 15% 50%, rgba(56, 189, 248, 0.25), transparent 25%), 
+          radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.2), transparent 25%);
+        filter: blur(40px);
+        animation: bgMove 20s infinite alternate;
+      }
+
+      @keyframes bgMove {
+        0% { transform: scale(1); }
+        100% { transform: scale(1.1); }
+      }
+      
+      /* Glass Card Utility */
+      .glass-card {
+        background: rgba(255, 255, 255, 0.55);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+      }
+
+      .glass-nav {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.8);
+      }
+
+      ::-webkit-scrollbar { width: 0px; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+    "sweetalert2": "https://esm.sh/sweetalert2@^11.26.18",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.3"
+  }
+}
+</script>
+</head>
+  <body>
+    <div class="bg-blob"></div>
+    <div id="root"></div>
+  </body>
+</html>

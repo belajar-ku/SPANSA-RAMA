@@ -1,0 +1,7 @@
+{
+  "name": "SPANSA RAMA",
+  "description": "Aplikasi Ramadan Digital UPT SMP Negeri 1 Pasuruan. Pantau ibadah harian, literasi, dan materi keislaman.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
