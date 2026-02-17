@@ -12,22 +12,6 @@ declare global {
   }
 }
 
-// --- CONSTANTS ---
-const SURAH_LIST = [
-  "Al-Fatihah", "Al-Baqarah", "Ali 'Imran", "An-Nisa'", "Al-Ma'idah", "Al-An'am", "Al-A'raf", "Al-Anfal", "At-Taubah", "Yunus",
-  "Hud", "Yusuf", "Ar-Ra'd", "Ibrahim", "Al-Hijr", "An-Nahl", "Al-Isra'", "Al-Kahf", "Maryam", "Ta-Ha",
-  "Al-Anbiya'", "Al-Hajj", "Al-Mu'minun", "An-Nur", "Al-Furqan", "Asy-Syu'ara'", "An-Naml", "Al-Qasas", "Al-'Ankabut", "Ar-Rum",
-  "Luqman", "As-Sajdah", "Al-Ahzab", "Saba'", "Fatir", "Ya-Sin", "As-Saffat", "Sad", "Az-Zumar", "Ghafir",
-  "Fussilat", "Asy-Syura", "Az-Zukhruf", "Ad-Dukhan", "Al-Jasiyah", "Al-Ahqaf", "Muhammad", "Al-Fath", "Al-Hujurat", "Qaf",
-  "Az-Zariyat", "At-Tur", "An-Najm", "Al-Qamar", "Ar-Rahman", "Al-Waqi'ah", "Al-Hadid", "Al-Mujadilah", "Al-Hasyr", "Al-Mumtahanah",
-  "As-Saff", "Al-Jumu'ah", "Al-Munafiqun", "At-Tagabun", "At-Talaq", "At-Tahrim", "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij",
-  "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddassir", "Al-Qiyamah", "Al-Insan", "Al-Mursalat", "An-Naba'", "An-Nazi'at", "'Abasa",
-  "At-Takwir", "Al-Infitar", "Al-Mutaffifin", "Al-Insyiqaq", "Al-Buruj", "At-Tariq", "Al-A'la", "Al-Ghasyiyah", "Al-Fajar", "Al-Balad",
-  "Asy-Syams", "Al-Lail", "Ad-Duha", "Al-Insyirah", "At-Tin", "Al-'Alaq", "Al-Qadr", "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat",
-  "Al-Qari'ah", "At-Takasur", "Al-'Asr", "Al-Humazah", "Al-Fil", "Quraisy", "Al-Ma'un", "Al-Kausar", "Al-Kafirun", "An-Nasr",
-  "Al-Lahab", "Al-Ikhlas", "Al-Falaq", "An-Nas"
-];
-
 // --- Tab Harian ---
 export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [submitted, setSubmitted] = useState(false);
@@ -41,7 +25,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   // Form States
   const [puasaStatus, setPuasaStatus] = useState<'Penuh' | 'Tidak' | ''>('');
   const [alasanTidakPuasa, setAlasanTidakPuasa] = useState('');
-  const [isHaid, setIsHaid] = useState(false);
+  const [isHaid, setIsHaid] = useState(false); // Legacy flag for checkbox (can be removed if relying only on dropdown)
   const [sahurStatus, setSahurStatus] = useState('');
   const [sahurLokasi, setSahurLokasi] = useState('');
   const [sahurWaktu, setSahurWaktu] = useState('');
@@ -52,13 +36,8 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const [sunahStatus, setSunahStatus] = useState<Record<string, string>>({
     'Tarawih': '', 'Witir': '', 'Tahajud': '', 'Duha': ''
   });
-  
-  // Tadarus States (Split)
   const [tadarusStatus, setTadarusStatus] = useState('');
-  const [tadarusSurah, setTadarusSurah] = useState('');
-  const [tadarusAyatStart, setTadarusAyatStart] = useState('');
-  const [tadarusAyatEnd, setTadarusAyatEnd] = useState('');
-
+  const [tadarusNote, setTadarusNote] = useState('');
   const [sedekahDiri, setSedekahDiri] = useState('');
   const [sedekahRumah, setSedekahRumah] = useState('');
   const [sedekahMasyarakat, setSedekahMasyarakat] = useState('');
@@ -128,8 +107,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
      setSahurStatus(''); setSahurLokasi(''); setSahurWaktu(''); setBukaStatus('');
      setSholatStatus({ 'Subuh': '', 'Zuhur': '', 'Asar': '', 'Magrib': '', 'Isya': '' });
      setSunahStatus({ 'Tarawih': '', 'Witir': '', 'Tahajud': '', 'Duha': '' });
-     setTadarusStatus(''); 
-     setTadarusSurah(''); setTadarusAyatStart(''); setTadarusAyatEnd('');
+     setTadarusStatus(''); setTadarusNote('');
      setSedekahDiri(''); setSedekahRumah(''); setSedekahMasyarakat('');
      setBelajarMapel(''); setBelajarTopik('');
 
@@ -150,24 +128,8 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              if(d.bukaStatus) setBukaStatus(d.bukaStatus);
              if(d.sholatStatus) setSholatStatus(d.sholatStatus);
              if(d.sunahStatus) setSunahStatus(d.sunahStatus);
-             
-             if(d.tadarusStatus) {
-                 setTadarusStatus(d.tadarusStatus);
-                 // Parse Tadarus Note "Surah X: Ayat Y-Z"
-                 if(d.tadarusNote) {
-                     const parts = d.tadarusNote.split(': Ayat ');
-                     if(parts.length === 2) {
-                         setTadarusSurah(parts[0]);
-                         const verseParts = parts[1].split('-');
-                         if(verseParts.length >= 1) setTadarusAyatStart(verseParts[0]);
-                         if(verseParts.length >= 2) setTadarusAyatEnd(verseParts[1]);
-                     } else {
-                         // Fallback for old data
-                         setTadarusSurah(d.tadarusNote);
-                     }
-                 }
-             }
-
+             if(d.tadarusStatus) setTadarusStatus(d.tadarusStatus);
+             if(d.tadarusNote) setTadarusNote(d.tadarusNote);
              if(d.sedekahDiri) setSedekahDiri(d.sedekahDiri);
              if(d.sedekahRumah) setSedekahRumah(d.sedekahRumah);
              if(d.sedekahMasyarakat) setSedekahMasyarakat(d.sedekahMasyarakat);
@@ -198,16 +160,6 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
     // Check if menstruasi
     const isMenstruasi = puasaStatus === 'Tidak' && alasanTidakPuasa === 'Menstruasi';
 
-    // Construct Tadarus Note
-    let finalTadarusNote = '';
-    if(tadarusStatus === 'Ya' && !isMenstruasi) {
-        if(tadarusSurah) {
-            finalTadarusNote = `${tadarusSurah}`;
-            if(tadarusAyatStart) finalTadarusNote += `: Ayat ${tadarusAyatStart}`;
-            if(tadarusAyatEnd) finalTadarusNote += `-${tadarusAyatEnd}`;
-        }
-    }
-
     const details: DailyLogDetails = {
           puasaStatus: puasaStatus as any, 
           alasanTidakPuasa, isHaid,
@@ -219,7 +171,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
           sholatStatus: isMenstruasi ? {} : sholatStatus, 
           sunahStatus: isMenstruasi ? {} : sunahStatus,
           tadarusStatus: isMenstruasi ? '' : tadarusStatus, 
-          tadarusNote: isMenstruasi ? '' : finalTadarusNote,
+          tadarusNote: isMenstruasi ? '' : tadarusNote,
           // Allowed fields
           sedekahDiri, sedekahRumah, sedekahMasyarakat,
           belajarMapel, belajarTopik
@@ -480,7 +432,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              </div>
           </div>
 
-          {/* Misi Tadarus - UPDATED: Dropdown Surah & Verse Inputs */}
+          {/* Misi Tadarus - DISABLED IF MENSTRUASI */}
           <div className={`glass-card p-1.5 rounded-[28px] ${isMenstruasi ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
              <div className="bg-gradient-to-br from-teal-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
                  <h3 className="font-bold text-teal-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-book-quran text-teal-500"></i> Misi Tadarus</h3>
@@ -490,28 +442,9 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                          <option value="Ya">✅ Ya, Membaca Al-Qur'an</option>
                          <option value="Tidak">❌ Tidak / Berhalangan</option>
                      </select>
-                     
-                     {/* Dynamic Fields for Qur'an */}
                      {tadarusStatus === 'Ya' && (
-                         <div className="animate-slide-up space-y-2 p-3 bg-teal-50 rounded-xl border border-teal-100">
-                             <label className="text-[10px] font-bold text-teal-600 uppercase block">Nama Surah</label>
-                             <select className="w-full p-2.5 bg-white border border-teal-200 rounded-lg text-sm font-bold text-slate-700 outline-none" value={tadarusSurah} onChange={(e) => setTadarusSurah(e.target.value)}>
-                                 <option value="" disabled hidden>-- Pilih Surah --</option>
-                                 {SURAH_LIST.map((s, idx) => (
-                                     <option key={idx} value={s}>{idx + 1}. {s}</option>
-                                 ))}
-                             </select>
-                             
-                             <div className="grid grid-cols-2 gap-2 mt-2">
-                                 <div>
-                                     <label className="text-[10px] font-bold text-teal-600 uppercase block mb-1">Dari Ayat</label>
-                                     <input type="number" className="w-full p-2 bg-white border border-teal-200 rounded-lg text-sm font-bold outline-none placeholder:text-teal-200" placeholder="1" value={tadarusAyatStart} onChange={(e) => setTadarusAyatStart(e.target.value)} />
-                                 </div>
-                                 <div>
-                                     <label className="text-[10px] font-bold text-teal-600 uppercase block mb-1">Sampai Ayat</label>
-                                     <input type="number" className="w-full p-2 bg-white border border-teal-200 rounded-lg text-sm font-bold outline-none placeholder:text-teal-200" placeholder="10" value={tadarusAyatEnd} onChange={(e) => setTadarusAyatEnd(e.target.value)} />
-                                 </div>
-                             </div>
+                         <div className="animate-slide-up">
+                             <input type="text" className="w-full p-3 bg-teal-50 border border-teal-100 rounded-xl text-sm placeholder:text-teal-300" placeholder="Surah & Ayat Berapa?" value={tadarusNote} onChange={(e) => setTadarusNote(toTitleCase(e.target.value))} />
                          </div>
                      )}
                  </div>
@@ -572,7 +505,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   );
 };
 
-// ... (TabProgress and TabLeaderboard remain the same) ...
+// --- Tab Progress ---
 export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: string, type: 'harian' | 'literasi') => void }) => {
     const [logs, setLogs] = useState<any[]>([]);
     const [startDate, setStartDate] = useState('');
@@ -687,6 +620,7 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
     );
 };
 
+// --- Tab Leaderboard (Updated: 2 Tabs for Gender) ---
 export const TabLeaderboard = ({ user }: { user?: User }) => {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -753,7 +687,7 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
     );
 };
 
-// --- Tab Literasi (Mobile Optimized) ---
+// --- Tab Literasi (Restored with YT Lock) ---
 export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -763,7 +697,6 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   
   // Video State
   const [videoFinished, setVideoFinished] = useState(false);
-  const [videoStarted, setVideoStarted] = useState(false);
   const playerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -783,8 +716,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      setVideoFinished(false); 
-      setVideoStarted(false);
+      setVideoFinished(false); // Reset video state on date change
       const mat = await SupabaseService.getLiterasiMaterial(date);
       setMaterial(mat);
       
@@ -792,8 +724,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
       if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
         setAnswers(log.details.literasiResponse);
         setSubmitted(true);
-        setVideoFinished(true);
-        setVideoStarted(true);
+        setVideoFinished(true); // If submitted, unlock everything
       } else {
         setAnswers(new Array(mat.questions.length).fill(''));
       }
@@ -823,6 +754,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   }, [loading, material, submitted]);
 
   const createPlayer = (videoId: string) => {
+      // Destroy old player if exists to prevent duplicates
       if (playerRef.current) {
           try { playerRef.current.destroy(); } catch(e) {}
       }
@@ -833,37 +765,27 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
           videoId: videoId,
           playerVars: {
               'autoplay': 1,
-              'controls': 0, 
-              'disablekb': 1,
-              'fs': 0,
+              'controls': 0, // Hide controls
+              'disablekb': 1, // Disable keyboard
+              'fs': 0, // Disable fullscreen
               'rel': 0,
               'modestbranding': 1,
-              'playsinline': 1, // Crucial for iOS
-              'mute': 1 // Crucial for Autoplay on Mobile
+              'playsinline': 1,
+              'mute': 1 // Mute needed for autoplay in many browsers
           },
           events: {
               'onReady': (event: any) => {
-                  // Mute is required for autoplay on most mobile browsers
-                  event.target.mute(); 
+                  event.target.mute(); // Ensure muted
                   event.target.playVideo();
               },
               'onStateChange': (event: any) => {
-                  if (event.data === 1) { // Playing
-                      setVideoStarted(true);
-                  }
-                  if (event.data === 0) { // Ended
+                  // 0 = Ended
+                  if (event.data === 0) {
                       setVideoFinished(true);
                   }
               }
           }
       });
-  };
-
-  const handleManualPlay = () => {
-      if(playerRef.current && playerRef.current.playVideo) {
-          playerRef.current.playVideo();
-          setVideoStarted(true);
-      }
   };
 
   const handleSave = async () => {
@@ -912,24 +834,12 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
                            </div>
                        </div>
                    ) : (
-                       <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black group">
+                       <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black">
                            <div id="youtube-player" className="w-full h-full"></div>
-                           
-                           {/* Overlay if not started (Manual Play Backup) */}
-                           {!videoStarted && (
-                               <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer" onClick={handleManualPlay}>
-                                   <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse-glow">
-                                       <i className="fas fa-play text-white text-2xl ml-1"></i>
-                                   </div>
-                               </div>
-                           )}
-
-                           {/* Transparent Overlay to prevent clicking while playing */}
-                           {videoStarted && !videoFinished && (
+                           {/* Transparent Overlay to prevent clicking */}
+                           {!videoFinished && (
                                <div className="absolute inset-0 z-20 bg-transparent"></div>
                            )}
-                           
-                           {/* Finished Overlay */}
                            {videoFinished && (
                                <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center text-white backdrop-blur-sm">
                                    <div className="text-center animate-slide-up">
@@ -981,7 +891,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   );
 };
 
-// ... (TabMateri and TabProfile remain the same) ...
+// --- Tab Materi (Restored with Green Theme) ---
 export const TabMateri = () => {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [prayerTimes, setPrayerTimes] = useState<any>(null);

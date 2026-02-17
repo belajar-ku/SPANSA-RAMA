@@ -125,6 +125,9 @@ export const SupabaseService = {
           let pts = 0;
           const d = log.details;
 
+          // Jika Alasan = Menstruasi, poin puasa, sholat, dll 0. 
+          // Tapi kita hitung normal dulu, validasi form di frontend memastikan input kosong/disabled jika menstruasi.
+          
           // Puasa: Penuh=100 (Request: remove Setengah)
           if (d.puasaStatus === 'Penuh') pts += 100;
 
@@ -184,19 +187,21 @@ export const SupabaseService = {
       } catch(e) { console.error(e); return []; }
   },
 
-  // --- LEADERBOARD ---
-  getLeaderboard: async (kelas?: string) => {
+  // --- LEADERBOARD (UPDATED: Filter by Gender) ---
+  getLeaderboard: async (gender: 'L' | 'P') => {
       try {
-          let query = supabase.from('users').select('id, name, kelas').eq('role', 'murid');
-          if (kelas) {
-              query = query.eq('kelas', kelas);
-          }
-          const { data: users, error: err1 } = await query;
+          // 1. Get users by gender
+          const { data: users, error: err1 } = await supabase
+              .from('users')
+              .select('id, name, kelas, gender')
+              .eq('role', 'murid')
+              .eq('gender', gender);
+
           if (err1 || !users || users.length === 0) return [];
 
           const userIds = users.map(u => u.id);
           
-          // FIXED: Removing unused 'error: err2' destructuring to fix TS6133
+          // 2. Get points sum
           const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
 
           if (!logs) return users.map(u => ({ ...u, points: 0 }));
