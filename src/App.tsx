@@ -114,7 +114,7 @@ const App = () => {
   const checkTargetAndShow = async (userId: string) => {
       const t = await SupabaseService.getRamadanTarget(userId);
       setTargetData(t);
-      // Always show modal on login/load so they can see/edit, regardless if data exists
+      // Always show modal on login/load so they can see/edit
       setShowTargetModal(true); 
   };
 
