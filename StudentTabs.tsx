@@ -753,7 +753,7 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
     );
 };
 
-// --- Tab Literasi (Mobile Optimized) ---
+// --- Tab Literasi (Mobile Optimized - Unmuted Manual Play) ---
 export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -832,19 +832,19 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
           width: '100%',
           videoId: videoId,
           playerVars: {
-              'autoplay': 1,
-              'controls': 0, 
+              'autoplay': 1, // Try autoplay (Desktop works)
+              'controls': 0, // Enforce watching logic
               'disablekb': 1,
               'fs': 0,
               'rel': 0,
               'modestbranding': 1,
               'playsinline': 1, // Crucial for iOS
-              'mute': 1 // Crucial for Autoplay on Mobile
+              'mute': 0 // USER REQUEST: Unmuted
           },
           events: {
               'onReady': (event: any) => {
-                  // Mute is required for autoplay on most mobile browsers
-                  event.target.mute(); 
+                  // Attempt play. If mobile, it will likely fail/block, staying in "unstarted" state.
+                  // The overlay button handles the fallback.
                   event.target.playVideo();
               },
               'onStateChange': (event: any) => {
@@ -862,7 +862,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   const handleManualPlay = () => {
       if(playerRef.current && playerRef.current.playVideo) {
           playerRef.current.playVideo();
-          setVideoStarted(true);
+          setVideoStarted(true); // Optimistically remove overlay
       }
   };
 
@@ -915,12 +915,13 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
                        <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black group">
                            <div id="youtube-player" className="w-full h-full"></div>
                            
-                           {/* Overlay if not started (Manual Play Backup) */}
+                           {/* Overlay if not started (Manual Play Backup for Mobile) */}
                            {!videoStarted && (
                                <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer" onClick={handleManualPlay}>
-                                   <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse-glow">
-                                       <i className="fas fa-play text-white text-2xl ml-1"></i>
+                                   <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse-glow hover:scale-110 transition-transform">
+                                       <i className="fas fa-play text-white text-3xl ml-2"></i>
                                    </div>
+                                   <div className="absolute mt-28 font-bold text-white text-sm bg-black/50 px-3 py-1 rounded-full">Ketuk untuk Mulai</div>
                                </div>
                            )}
 
