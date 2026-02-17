@@ -1,13 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
 import { User, LiterasiMaterial, DailyLog, DailyLogDetails, RAMADAN_QUOTES, getWIBDate } from './types';
+import { toTitleCase } from './App';
+
+// Declare global YT for TypeScript
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
 // --- Tab Harian ---
 export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [submitted, setSubmitted] = useState(false);
   const [selectedDate, setSelectedDate] = useState(initialDate || getWIBDate());
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [targetStartDate, setTargetStartDate] = useState('');
   
   // Prayer Times State
   const [prayerTimes, setPrayerTimes] = useState<any>(null);
@@ -133,6 +143,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
 
      SupabaseService.getRamadanTarget(user.id).then(target => {
         if(target && target.startDate) {
+            setTargetStartDate(target.startDate);
             const start = new Date(target.startDate);
             const now = new Date();
             start.setHours(0,0,0,0); now.setHours(0,0,0,0);
@@ -193,7 +204,27 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
       </>
   );
 
+  // CHECK DATE START LOGIC (Modified to strict before start check)
+  const isBeforeStart = targetStartDate && selectedDate < targetStartDate;
+
   if (loading) return <div className="p-10 text-center"><i className="fas fa-circle-notch fa-spin text-primary-500"></i></div>;
+
+  // Jika tanggal yang dipilih kurang dari tanggal start, tampilkan blokir
+  if (isBeforeStart) {
+      return (
+         <div className="p-6 pb-28 animate-slide-up min-h-[60vh] flex flex-col items-center justify-center text-center">
+             <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6 text-slate-400 text-3xl shadow-inner">
+                 <i className="fas fa-calendar-times"></i>
+             </div>
+             <h3 className="text-xl font-black text-slate-800 mb-2">Belum Mulai</h3>
+             <p className="text-sm text-slate-500 max-w-xs mx-auto mb-4">
+                 Kamu memilih awal puasa tanggal <strong>{targetStartDate}</strong>. 
+                 Jurnal untuk tanggal <strong>{selectedDate}</strong> belum dibuka.
+             </p>
+             <button onClick={() => setSelectedDate(targetStartDate)} className="mt-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-bold text-sm shadow-lg">Lompat ke Awal Puasa</button>
+         </div>
+      );
+  }
 
   if (submitted) {
      return (
@@ -254,6 +285,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
             )}
        </div>
 
+       {/* Form Sections */}
        <div className="space-y-5">
           {user.gender === 'P' && (
              <div className="glass-card p-1.5 rounded-[28px]">
@@ -293,7 +325,6 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                     <div>
                         <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-2">Aktivitas Sahur</label>
                         <div className="bg-white/60 p-3 rounded-xl border border-emerald-50">
-                            {/* Sahur bebas diisi kapanpun */}
                             <select className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 border-b border-emerald-100 outline-none mb-3" value={sahurStatus} onChange={(e) => setSahurStatus(e.target.value)}>
                                 <option value="" disabled hidden>----</option>
                                 <option value="Ya">✅ Ya, Saya Sahur</option>
@@ -321,11 +352,11 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                         <div className={`bg-white/60 p-3 rounded-xl border border-emerald-50 ${isLocked('Buka') ? 'opacity-50 bg-slate-100' : ''}`}>
                             <select disabled={isLocked('Buka')} className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 outline-none" value={bukaStatus} onChange={(e) => setBukaStatus(e.target.value)}>
                                 <option value="" disabled hidden>----</option>
-                                <option value="Segera setelah Azan Maghrib">🥣 Segera setelah Azan</option>
-                                <option value="Setelah Salat Maghrib">🕌 Setelah Salat Magrib</option>
+                                <option value="Segera setelah Azan Magrib">🥣 Segera setelah Azan</option>
+                                <option value="Setelah Salat Magrib">🕌 Setelah Salat Magrib</option>
                                 <option value="Setelah Salat Tarawih">🌙 Setelah Salat Tarawih</option>
                             </select>
-                            {isLocked('Buka') && renderLockMessage('Tunggu Maghrib')}
+                            {isLocked('Buka') && renderLockMessage('Tunggu Magrib')}
                         </div>
                     </div>
                  </div>
@@ -390,46 +421,46 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                      </select>
                      {tadarusStatus === 'Ya' && (
                          <div className="animate-slide-up">
-                             <input type="text" className="w-full p-3 bg-teal-50 border border-teal-100 rounded-xl text-sm placeholder:text-teal-300" placeholder="Surah & Ayat berapa?" value={tadarusNote} onChange={(e) => setTadarusNote(e.target.value)} />
+                             <input type="text" className="w-full p-3 bg-teal-50 border border-teal-100 rounded-xl text-sm placeholder:text-teal-300" placeholder="Surah & Ayat Berapa?" value={tadarusNote} onChange={(e) => setTadarusNote(toTitleCase(e.target.value))} />
                          </div>
                      )}
                  </div>
              </div>
           </div>
 
-          {/* Misi Kebaikan (Sedekah) - UPDATED TO MATCH REQUEST */}
+          {/* Misi Kebaikan */}
           <div className="glass-card p-1.5 rounded-[28px]">
              <div className="bg-gradient-to-br from-rose-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
                  <h3 className="font-bold text-rose-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-hand-holding-heart text-rose-500"></i> Misi Kebaikan</h3>
                  <div className="space-y-3">
                     <div>
-                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">SEDEKAH DIRI (JUJUR/SOPAN)</label>
-                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Apa kebaikanmu hari ini?" value={sedekahDiri} onChange={(e) => setSedekahDiri(e.target.value)} />
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">Sedekah Diri (Jujur/Sopan)</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Apa Kebaikanmu Hari Ini?" value={sedekahDiri} onChange={(e) => setSedekahDiri(toTitleCase(e.target.value))} />
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">BANTU ORANG TUA</label>
-                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Cuci piring" value={sedekahRumah} onChange={(e) => setSedekahRumah(e.target.value)} />
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">Bantu Orang Tua</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Cuci Piring" value={sedekahRumah} onChange={(e) => setSedekahRumah(toTitleCase(e.target.value))} />
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">AKSI SOSIAL</label>
-                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Buang sampah pada tempatnya" value={sedekahMasyarakat} onChange={(e) => setSedekahMasyarakat(e.target.value)} />
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">Aksi Sosial</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Buang Sampah Pada Tempatnya" value={sedekahMasyarakat} onChange={(e) => setSedekahMasyarakat(toTitleCase(e.target.value))} />
                     </div>
                  </div>
              </div>
           </div>
 
-          {/* Jurnal Belajar - UPDATED TO MATCH REQUEST */}
+          {/* Jurnal Belajar */}
           <div className="glass-card p-1.5 rounded-[28px]">
              <div className="bg-gradient-to-br from-blue-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
                  <h3 className="font-bold text-blue-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-book-open text-blue-500"></i> Jurnal Belajar</h3>
                  <div className="space-y-3">
                      <div>
-                         <label className="text-[10px] font-bold text-blue-400 uppercase mb-1 block">MAPEL</label>
-                         <input type="text" className="w-full p-3 bg-white border border-blue-100 rounded-xl text-sm" placeholder="Matematika" value={belajarMapel} onChange={(e) => setBelajarMapel(e.target.value)} />
+                         <label className="text-[10px] font-bold text-blue-400 uppercase mb-1 block">Mata Pelajaran</label>
+                         <input type="text" className="w-full p-3 bg-white border border-blue-100 rounded-xl text-sm" placeholder="Matematika" value={belajarMapel} onChange={(e) => setBelajarMapel(toTitleCase(e.target.value))} />
                      </div>
                      <div>
-                         <label className="text-[10px] font-bold text-blue-400 uppercase mb-1 block">APA YANG DIPELAJARI?</label>
-                         <input type="text" className="w-full p-3 bg-white border border-blue-100 rounded-xl text-sm" placeholder="Ringkasan materi..." value={belajarTopik} onChange={(e) => setBelajarTopik(e.target.value)} />
+                         <label className="text-[10px] font-bold text-blue-400 uppercase mb-1 block">Apa yang Dipelajari?</label>
+                         <input type="text" className="w-full p-3 bg-white border border-blue-100 rounded-xl text-sm" placeholder="Ringkasan Materi..." value={belajarTopik} onChange={(e) => setBelajarTopik(toTitleCase(e.target.value))} />
                      </div>
                  </div>
              </div>
@@ -444,7 +475,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   );
 };
 
-// --- Tab Progress (NEW 2-TAB SPLIT) ---
+// --- Tab Progress ---
 export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: string, type: 'harian' | 'literasi') => void }) => {
     const [logs, setLogs] = useState<any[]>([]);
     const [startDate, setStartDate] = useState('');
@@ -559,7 +590,7 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
     );
 };
 
-// --- Tab Materi (Updated with Jadwal Sholat Header) ---
+// --- Tab Materi (Updated with Green Theme & EYD) ---
 export const TabMateri = () => {
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
   const [prayerTimes, setPrayerTimes] = useState<any>(null);
@@ -576,12 +607,31 @@ export const TabMateri = () => {
         color: "text-emerald-600", 
         bg: "bg-emerald-50",
         content: (
-            <div className="space-y-3 text-sm text-slate-600">
-                <p><strong>Definisi:</strong> Puasa (Shaum) secara bahasa berarti menahan. Secara istilah berarti menahan diri dari hal-hal yang membatalkan puasa mulai dari terbit fajar hingga terbenam matahari dengan niat tertentu.</p>
-                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100 my-2">
-                    <p className="font-arab text-right text-lg text-emerald-800 mb-2">يَا أَيُّهَا الَّذِينَ آمَنُوا كُتِبَ عَلَيْكُمُ الصِّيَامُ كَمَا كُتِبَ عَلَى الَّذِينَ مِنْ قَبْلِكُمْ لَعَلَّكُمْ تَتَّقُونَ</p>
-                    <p className="text-xs italic">"Wahai orang-orang yang beriman! Diwajibkan atas kamu berpuasa sebagaimana diwajibkan atas orang-orang sebelum kamu agar kamu bertakwa." (QS. Al-Baqarah: 183)</p>
+            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
+                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 mb-3">
+                    <p className="font-arab text-right text-xl text-emerald-800 mb-3 leading-loose">يَا أَيُّهَا الَّذِينَ آمَنُوا كُتِبَ عَلَيْكُمُ الصِّيَامُ كَمَا كُتِبَ عَلَى الَّذِينَ مِنْ قَبْلِكُمْ لَعَلَّكُمْ تَتَّقُونَ</p>
+                    <p className="text-xs italic text-emerald-700">"Wahai orang-orang yang beriman! Diwajibkan atas kamu berpuasa sebagaimana diwajibkan atas orang-orang sebelum kamu agar kamu bertakwa." (QS. Al-Baqarah: 183)</p>
                 </div>
+                
+                <h4 className="font-bold text-emerald-800 border-b border-emerald-100 pb-1">1. Pengertian</h4>
+                <p>Secara bahasa, puasa (shaum) berarti menahan. Secara istilah syariat, puasa adalah menahan diri dari segala hal yang membatalkan (makan, minum, syahwat) mulai dari terbit fajar (Subuh) hingga terbenam matahari (Magrib) dengan niat ibadah kepada Allah SWT.</p>
+                
+                <h4 className="font-bold text-emerald-800 border-b border-emerald-100 pb-1 mt-2">2. Syarat Wajib Puasa</h4>
+                <ul className="list-disc pl-5 space-y-1 text-xs">
+                    <li>Beragama Islam</li>
+                    <li>Balig (dewasa) dan Berakal</li>
+                    <li>Mampu/Kuat berpuasa</li>
+                    <li>Mukim (tidak sedang dalam perjalanan jauh/musafir)</li>
+                </ul>
+
+                <h4 className="font-bold text-emerald-800 border-b border-emerald-100 pb-1 mt-2">3. Rukun Puasa</h4>
+                <ul className="list-disc pl-5 space-y-1 text-xs">
+                    <li><strong>Niat:</strong> Dilakukan pada malam hari sebelum terbit fajar (untuk puasa wajib).</li>
+                    <li><strong>Menahan Diri (Imsak):</strong> Menjauhi segala pembatal puasa dari Subuh sampai Magrib.</li>
+                </ul>
+
+                <h4 className="font-bold text-emerald-800 border-b border-emerald-100 pb-1 mt-2">4. Pembatal Puasa</h4>
+                <p className="text-xs">Makan/minum dengan sengaja, muntah disengaja, berhubungan suami istri, keluar mani dengan sengaja, haid/nifas, gila, dan murtad.</p>
             </div>
         )
     },
@@ -591,8 +641,26 @@ export const TabMateri = () => {
         color: "text-blue-600", 
         bg: "bg-blue-50",
         content: (
-            <div className="space-y-3 text-sm text-slate-600">
-                <p>Birrul Walidain (berbakti kepada orang tua) adalah amalan utama yang posisinya sangat tinggi dalam Islam.</p>
+            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-3">
+                    <p className="font-arab text-right text-xl text-blue-800 mb-3 leading-loose">وَقَضَىٰ رَبُّكَ أَلَّا تَعْبُدُوا إِلَّا إِيَّاهُ وَبِالْوَالِدَيْنِ إِحْسَانًا</p>
+                    <p className="text-xs italic text-blue-700">"Dan Tuhanmu telah memerintahkan supaya kamu jangan menyembah selain Dia dan hendaklah kamu berbuat baik pada ibu bapakmu dengan sebaik-baiknya." (QS. Al-Isra: 23)</p>
+                </div>
+
+                <p>Birrul Walidain (berbakti kepada orang tua) adalah salah satu amalan paling mulia. Bahkan, rida Allah bergantung pada rida orang tua.</p>
+
+                <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                    <p className="font-bold text-xs mb-1">Hadis Riwayat Tirmidzi:</p>
+                    <p className="italic text-xs">"Rida Allah tergantung pada rida orang tua, dan murka Allah tergantung pada murka orang tua."</p>
+                </div>
+
+                <h4 className="font-bold text-blue-800 border-b border-blue-100 pb-1 mt-2">Cara Berbakti:</h4>
+                <ul className="list-disc pl-5 space-y-1 text-xs">
+                    <li>Berbicara dengan sopan dan lembut, jangan berkata "ah".</li>
+                    <li>Mendoakan mereka setiap selesai salat ("Rabbighfirli waliwalidayya...").</li>
+                    <li>Membantu pekerjaan rumah tanpa diminta.</li>
+                    <li>Menjaga nama baik keluarga dengan berprestasi dan berakhlak mulia.</li>
+                </ul>
             </div>
         )
     },
@@ -602,8 +670,72 @@ export const TabMateri = () => {
         color: "text-amber-600", 
         bg: "bg-amber-50",
         content: (
-            <div className="space-y-3 text-sm text-slate-600">
-                <p>Zakat Fitrah adalah zakat wajib yang dikeluarkan setiap jiwa muslim di bulan Ramadan sebelum shalat Idul Fitri.</p>
+            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
+                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-3">
+                    <p className="font-bold text-amber-800 text-xs mb-1">Hadis Riwayat Abu Daud:</p>
+                    <p className="italic text-xs">"Rasulullah SAW mewajibkan zakat fitrah sebagai pembersih bagi orang yang berpuasa dari perbuatan sia-sia dan kata-kata kotor, serta sebagai makanan bagi orang-orang miskin."</p>
+                </div>
+
+                <h4 className="font-bold text-amber-800 border-b border-amber-100 pb-1">1. Ketentuan</h4>
+                <p>Zakat fitrah wajib dikeluarkan oleh setiap muslim (laki-laki/perempuan, tua/muda) yang memiliki kelebihan makanan pada hari raya Idulfitri.</p>
+
+                <h4 className="font-bold text-amber-800 border-b border-amber-100 pb-1 mt-2">2. Besaran Zakat</h4>
+                <p>Sebanyak 1 sha' makanan pokok (beras). Di Indonesia disetarakan dengan <strong>2,5 kg</strong> atau <strong>3,5 liter</strong> beras per jiwa.</p>
+
+                <h4 className="font-bold text-amber-800 border-b border-amber-100 pb-1 mt-2">3. Waktu Pembayaran</h4>
+                <ul className="list-disc pl-5 space-y-1 text-xs">
+                    <li><strong>Waktu Utama:</strong> Pada pagi hari sebelum salat Idulfitri.</li>
+                    <li><strong>Waktu Boleh:</strong> Sejak awal Ramadan.</li>
+                    <li><strong>Waktu Makruh:</strong> Setelah salat Idulfitri hingga sebelum terbenam matahari (dianggap sedekah biasa).</li>
+                </ul>
+            </div>
+        )
+    },
+    { 
+        title: "Masa Depanku", 
+        icon: "fa-rocket", 
+        color: "text-purple-600", 
+        bg: "bg-purple-50",
+        content: (
+            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
+                 <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-3 text-center">
+                    <p className="font-arab text-xl text-purple-800 mb-1 font-bold">مَنْ جَدَّ وَجَدَ</p>
+                    <p className="text-xs italic text-purple-700">"Man jadda wajada." (Barang siapa yang bersungguh-sungguh, ia akan berhasil).</p>
+                </div>
+                
+                <p>Masa depan bukan ditunggu, tapi diciptakan hari ini. Sebagai murid muslim yang cerdas, persiapan masa depan mencakup dunia dan akhirat.</p>
+
+                <h4 className="font-bold text-purple-800 border-b border-purple-100 pb-1 mt-2">Tips Sukses Murid:</h4>
+                <ul className="list-disc pl-5 space-y-2 text-xs">
+                    <li><strong>Disiplin Waktu:</strong> Seperti salat yang tepat waktu, belajarpun harus terjadwal. Jangan menunda tugas.</li>
+                    <li><strong>Hormati Guru:</strong> Ilmu akan mudah masuk jika kita memuliakan guru yang memberikannya.</li>
+                    <li><strong>Doa & Ikhtiar:</strong> Belajar keras tanpa doa adalah sombong, doa tanpa belajar adalah bohong.</li>
+                    <li><strong>Cari Passion:</strong> Temukan apa yang kamu suka, kembangkan skill di sana, tapi jangan lupakan kewajiban akademik.</li>
+                </ul>
+            </div>
+        )
+    },
+    { 
+        title: "Tips Jujur dan Bertanggung Jawab", 
+        icon: "fa-shield-heart", 
+        color: "text-rose-600", 
+        bg: "bg-rose-50",
+        content: (
+            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
+                 <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 mb-3">
+                    <p className="font-bold text-rose-800 text-xs mb-1">Hadis Riwayat Muslim:</p>
+                    <p className="italic text-xs">"Hendaklah kalian berlaku jujur, karena kejujuran itu menuntun kepada kebaikan, dan kebaikan menuntun kepada surga."</p>
+                </div>
+
+                <p>Jujur adalah mata uang yang berlaku di mana saja. Orang yang jujur akan tenang hatinya, sedangkan pembohong akan selalu gelisah.</p>
+
+                <h4 className="font-bold text-rose-800 border-b border-rose-100 pb-1 mt-2">Penerapan Tanggung Jawab:</h4>
+                <ul className="list-disc pl-5 space-y-2 text-xs">
+                    <li><strong>Pada Diri Sendiri:</strong> Menjaga kesehatan, ibadah, dan belajar tanpa perlu disuruh orang tua.</li>
+                    <li><strong>Pada Tugas Sekolah:</strong> Mengerjakan PR sendiri. Menyontek adalah bibit korupsi.</li>
+                    <li><strong>Pada Barang Titipan:</strong> Jika meminjam barang teman, jaga baik-baik dan kembalikan tepat waktu.</li>
+                    <li><strong>Berani Mengaku Salah:</strong> Jika berbuat salah, minta maaf dan perbaiki, bukan mencari alasan.</li>
+                </ul>
             </div>
         )
     }
@@ -611,19 +743,20 @@ export const TabMateri = () => {
 
   return (
     <div className="p-6 pb-28 animate-slide-up">
-       <div className="glass-card bg-gradient-to-br from-slate-800 to-slate-900 rounded-[32px] p-6 text-white shadow-xl mb-6 relative overflow-hidden">
+       {/* UPDATED: Green Theme Container */}
+       <div className="glass-card bg-gradient-to-br from-emerald-800 to-teal-900 rounded-[32px] p-6 text-white shadow-xl mb-6 relative overflow-hidden">
           <div className="relative z-10 text-center">
              <i className="fas fa-kaaba text-5xl mb-3 opacity-80"></i>
              <h2 className="text-xl font-bold">Khazanah Islam</h2>
-             <p className="text-xs text-slate-400">Jadwal Imsakiyah & Materi</p>
+             <p className="text-xs text-emerald-100">Jadwal Imsakiyah & Materi</p>
           </div>
        </div>
 
-       {/* Jadwal Sholat Widget (Permanent Header) */}
+       {/* Jadwal Salat Widget (Permanent Header) - UPDATED: Green Border & Text */}
        {prayerTimes && (
-           <div className="glass-card p-4 rounded-[28px] mb-6 animate-slide-up border-2 border-primary-50">
+           <div className="glass-card p-4 rounded-[28px] mb-6 animate-slide-up border-2 border-emerald-200">
                <div className="text-center mb-4">
-                   <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Jadwal Sholat Pasuruan</h3>
+                   <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Jadwal Salat Pasuruan</h3>
                    <p className="text-xs text-slate-400 font-bold">{date}</p>
                </div>
                <div className="grid grid-cols-3 gap-2">
@@ -679,7 +812,7 @@ export const TabMateri = () => {
                            </div>
                        </button>
                        
-                       <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                       <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                            <div className="p-5 pt-0 border-t border-slate-100 bg-white/40">
                                {item.content}
                            </div>
@@ -692,21 +825,36 @@ export const TabMateri = () => {
   );
 };
 
-// --- Tab Literasi ---
+// --- Tab Literasi (Updated with Youtube API & Auto Lock) ---
 export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [date, setDate] = useState(initialDate || getWIBDate());
+  
+  // Video State
+  const [videoFinished, setVideoFinished] = useState(false);
+  const playerRef = useRef<any>(null);
 
   useEffect(() => {
     if(initialDate) setDate(initialDate);
   }, [initialDate]);
 
+  // Load Youtube API
+  useEffect(() => {
+      if (!window.YT) {
+          const tag = document.createElement('script');
+          tag.src = "https://www.youtube.com/iframe_api";
+          const firstScriptTag = document.getElementsByTagName('script')[0];
+          firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      }
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       setLoading(true);
+      setVideoFinished(false); // Reset video state on date change
       const mat = await SupabaseService.getLiterasiMaterial(date);
       setMaterial(mat);
       
@@ -714,6 +862,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
       if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
         setAnswers(log.details.literasiResponse);
         setSubmitted(true);
+        setVideoFinished(true); // If submitted, unlock everything
       } else {
         setAnswers(new Array(mat.questions.length).fill(''));
       }
@@ -721,6 +870,61 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
     };
     init();
   }, [user.id, date]);
+
+  // Initialize Player when material is loaded
+  useEffect(() => {
+      if (!loading && material && !submitted && !videoFinished) {
+          // Extract ID
+          let videoId = '';
+          if(material.youtubeUrl.includes('v=')) videoId = material.youtubeUrl.split('v=')[1]?.split('&')[0];
+          else if(material.youtubeUrl.includes('youtu.be/')) videoId = material.youtubeUrl.split('youtu.be/')[1];
+          else if(material.youtubeUrl.includes('embed/')) videoId = material.youtubeUrl.split('embed/')[1]?.split('"')[0];
+
+          if (videoId && window.YT) {
+              window.onYouTubeIframeAPIReady = () => {
+                 createPlayer(videoId);
+              };
+              if(window.YT.Player) {
+                  createPlayer(videoId);
+              }
+          }
+      }
+  }, [loading, material, submitted]);
+
+  const createPlayer = (videoId: string) => {
+      // Destroy old player if exists to prevent duplicates
+      if (playerRef.current) {
+          try { playerRef.current.destroy(); } catch(e) {}
+      }
+
+      playerRef.current = new window.YT.Player('youtube-player', {
+          height: '100%',
+          width: '100%',
+          videoId: videoId,
+          playerVars: {
+              'autoplay': 1,
+              'controls': 0, // Hide controls
+              'disablekb': 1, // Disable keyboard
+              'fs': 0, // Disable fullscreen
+              'rel': 0,
+              'modestbranding': 1,
+              'playsinline': 1,
+              'mute': 1 // Mute needed for autoplay in many browsers
+          },
+          events: {
+              'onReady': (event: any) => {
+                  event.target.mute(); // Ensure muted
+                  event.target.playVideo();
+              },
+              'onStateChange': (event: any) => {
+                  // 0 = Ended
+                  if (event.data === 0) {
+                      setVideoFinished(true);
+                  }
+              }
+          }
+      });
+  };
 
   const handleSave = async () => {
      if (answers.some(a => !a.trim())) {
@@ -745,38 +949,54 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   if (loading) return <div className="p-10 text-center"><i className="fas fa-circle-notch fa-spin text-primary-500"></i></div>;
   if (!material || !material.youtubeUrl) return <div className="p-10 text-center"><p className="text-slate-500">Belum ada materi literasi untuk tanggal {date}.</p></div>;
 
-  const renderVideo = () => {
-      if (material.youtubeUrl.includes('<iframe')) {
-          return <div dangerouslySetInnerHTML={{__html: material.youtubeUrl}} className="aspect-video w-full rounded-xl overflow-hidden shadow-lg" />;
-      }
-      let videoId = '';
-      if(material.youtubeUrl.includes('v=')) videoId = material.youtubeUrl.split('v=')[1]?.split('&')[0];
-      else if(material.youtubeUrl.includes('youtu.be/')) videoId = material.youtubeUrl.split('youtu.be/')[1];
-      
-      if(videoId) {
-          return <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video rounded-xl shadow-lg" allowFullScreen title="Literasi Video"></iframe>
-      }
-      return <div className="p-4 bg-red-100 text-red-500 rounded-xl">Format video tidak dikenali. <a href={material.youtubeUrl} target="_blank" className="underline">Klik Link Ini</a></div>;
-  };
-
   return (
       <div className="p-6 pb-28 animate-slide-up">
            <div className="glass-card bg-gradient-to-r from-pink-500 to-rose-500 rounded-[32px] p-6 text-white mb-6 shadow-xl relative overflow-hidden">
               <div className="relative z-10 flex justify-between items-center">
                  <div>
                     <h2 className="text-xl font-bold mb-1"><i className="fas fa-play-circle mr-2"></i>Literasi Ramadan</h2>
-                    <p className="text-xs opacity-90">Simak video & jawab pertanyaan</p>
+                    <p className="text-xs opacity-90">Simak video sampai habis untuk menjawab</p>
                  </div>
                  <input type="date" className="bg-white/20 backdrop-blur-md text-white font-bold text-xs px-3 py-2 rounded-xl border border-white/30 outline-none" value={date} max={getWIBDate()} onChange={(e) => setDate(e.target.value)} />
               </div>
            </div>
 
            <div className="space-y-6">
-               <div className="glass-card p-2 rounded-[24px]">
-                   {renderVideo()}
+               <div className="glass-card p-2 rounded-[24px] relative overflow-hidden">
+                   {/* Video Container */}
+                   {submitted ? (
+                       <div className="aspect-video w-full bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                           <div>
+                               <i className="fas fa-check-circle text-4xl mb-2 text-green-500"></i>
+                               <p className="font-bold">Literasi Selesai</p>
+                           </div>
+                       </div>
+                   ) : (
+                       <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black">
+                           <div id="youtube-player" className="w-full h-full"></div>
+                           {/* Transparent Overlay to prevent clicking */}
+                           {!videoFinished && (
+                               <div className="absolute inset-0 z-20 bg-transparent"></div>
+                           )}
+                           {videoFinished && (
+                               <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center text-white backdrop-blur-sm">
+                                   <div className="text-center animate-slide-up">
+                                       <i className="fas fa-check-circle text-4xl mb-2 text-green-400"></i>
+                                       <p className="font-bold">Video Selesai</p>
+                                       <p className="text-xs">Silakan isi jawaban di bawah</p>
+                                   </div>
+                               </div>
+                           )}
+                       </div>
+                   )}
                </div>
-               <div className="glass-card p-6 rounded-[24px]">
-                   <h3 className="font-bold text-slate-800 mb-4">Pertanyaan Pemahaman ({date})</h3>
+
+               <div className={`glass-card p-6 rounded-[24px] transition-all duration-500 ${!videoFinished && !submitted ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+                   <h3 className="font-bold text-slate-800 mb-4 flex justify-between items-center">
+                       <span>Pertanyaan Pemahaman ({date})</span>
+                       {!videoFinished && !submitted && <i className="fas fa-lock text-slate-400"></i>}
+                   </h3>
+                   
                    {submitted ? (
                        <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-green-800 text-sm font-bold text-center"><i className="fas fa-check-circle text-2xl mb-2 block"></i>Kamu sudah mengerjakan literasi tanggal ini.</div>
                    ) : (
@@ -784,10 +1004,23 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
                            {material.questions.map((q, idx) => (
                                <div key={idx}>
                                    <label className="text-xs font-bold text-slate-500 block mb-2">{idx+1}. {q}</label>
-                                   <textarea className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-pink-200 outline-none resize-none" rows={3} value={answers[idx]} onChange={e => { const newA = [...answers]; newA[idx] = e.target.value; setAnswers(newA); }} placeholder="Tulis jawabanmu..." />
+                                   <textarea 
+                                        disabled={!videoFinished}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-pink-200 outline-none resize-none disabled:bg-slate-100 disabled:cursor-not-allowed" 
+                                        rows={3} 
+                                        value={answers[idx]} 
+                                        onChange={e => { const newA = [...answers]; newA[idx] = e.target.value; setAnswers(newA); }} 
+                                        placeholder={videoFinished ? "Tulis jawabanmu..." : "Tonton video sampai habis dulu..."} 
+                                   />
                                </div>
                            ))}
-                           <button onClick={handleSave} className="w-full py-4 bg-pink-600 text-white font-bold rounded-xl shadow-lg hover:bg-pink-700 transition">Kirim Jawaban</button>
+                           <button 
+                                onClick={handleSave} 
+                                disabled={!videoFinished}
+                                className={`w-full py-4 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 ${videoFinished ? 'bg-pink-600 text-white hover:bg-pink-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                           >
+                               {videoFinished ? 'Kirim Jawaban' : 'Selesaikan Video Dulu'} {videoFinished && <i className="fas fa-paper-plane"></i>}
+                           </button>
                        </div>
                    )}
                </div>
