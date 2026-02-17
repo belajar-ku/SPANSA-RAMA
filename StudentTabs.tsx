@@ -263,7 +263,9 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   );
 
   // CHECK DATE START LOGIC (Strict)
-  const isBeforeStart = targetStartDate && selectedDate < targetStartDate;
+  // Logic Pra-Ramadan: Jika tanggal yang dipilih kurang dari targetStartDate, maka masuk mode "Pra-Ramadan"
+  // Mode ini tetap mengizinkan pengisian Salat, Sunah (Sebagian), Tadarus, dll. Tapi Puasa disembunyikan.
+  const isPreRamadan = targetStartDate && selectedDate < targetStartDate;
   
   // MENSTRUASI LOGIC
   const isMenstruasi = puasaStatus === 'Tidak' && alasanTidakPuasa === 'Menstruasi';
@@ -275,23 +277,6 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const isSubmitLocked = isToday && currentHour < 20;
 
   if (loading) return <div className="p-10 text-center"><i className="fas fa-circle-notch fa-spin text-primary-500"></i></div>;
-
-  // Jika tanggal yang dipilih kurang dari tanggal start, tampilkan blokir
-  if (isBeforeStart) {
-      return (
-         <div className="p-6 pb-28 animate-slide-up min-h-[60vh] flex flex-col items-center justify-center text-center">
-             <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6 text-slate-400 text-3xl shadow-inner">
-                 <i className="fas fa-calendar-times"></i>
-             </div>
-             <h3 className="text-xl font-black text-slate-800 mb-2">Belum Mulai</h3>
-             <p className="text-sm text-slate-500 max-w-xs mx-auto mb-4">
-                 Kamu memilih awal puasa tanggal <strong>{targetStartDate}</strong>. 
-                 Jurnal untuk tanggal <strong>{selectedDate}</strong> belum dibuka.
-             </p>
-             <button onClick={() => setSelectedDate(targetStartDate)} className="mt-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-bold text-sm shadow-lg">Lompat ke Awal Puasa</button>
-         </div>
-      );
-  }
 
   if (submitted) {
      return (
@@ -345,7 +330,12 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                      <input type="date" className="bg-primary-50 text-primary-700 font-bold text-xs px-3 py-2.5 rounded-xl border border-primary-100 outline-none" value={selectedDate} max={getWIBDate()} onChange={(e) => setSelectedDate(e.target.value)} />
                 </div>
             </div>
-            {selectedDate !== getWIBDate() && (
+            {isPreRamadan && (
+                <div className="bg-blue-50 text-blue-600 text-[10px] font-bold text-center py-1 rounded-b-[20px]">
+                    <i className="fas fa-info-circle mr-1"></i> Pra-Ramadan (Latihan)
+                </div>
+            )}
+            {!isPreRamadan && selectedDate !== getWIBDate() && (
                 <div className="bg-orange-50 text-orange-600 text-[10px] font-bold text-center py-1 rounded-b-[20px]">
                     <i className="fas fa-history mr-1"></i> Anda mengisi laporan lampau
                 </div>
@@ -363,73 +353,75 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              </div>
           )}
 
-          {/* Puasa Section */}
-          <div className={`glass-card p-1.5 rounded-[28px] ${isHaid ? 'opacity-50 pointer-events-none' : ''}`}>
-             <div className="bg-gradient-to-br from-emerald-50 to-white rounded-[24px] p-6 border border-white/60 space-y-4 shadow-sm relative overflow-hidden">
-                 <h3 className="font-bold text-emerald-800 mb-2 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-check-circle text-emerald-500"></i> Misi Puasa</h3>
-                 
-                 <select className="w-full p-4 bg-white border-2 border-emerald-100 rounded-xl text-sm font-bold text-slate-700 outline-none" value={puasaStatus} onChange={(e) => setPuasaStatus(e.target.value as any)}>
-                    <option value="" disabled hidden>----</option>
-                    <option value="Penuh">✅ Puasa Penuh (100 Poin)</option>
-                    <option value="Tidak">❌ Tidak Puasa (0 Poin)</option>
-                 </select>
+          {/* Puasa Section - HIDDEN IF PRE-RAMADAN */}
+          {!isPreRamadan && (
+              <div className={`glass-card p-1.5 rounded-[28px] ${isHaid ? 'opacity-50 pointer-events-none' : ''}`}>
+                 <div className="bg-gradient-to-br from-emerald-50 to-white rounded-[24px] p-6 border border-white/60 space-y-4 shadow-sm relative overflow-hidden">
+                     <h3 className="font-bold text-emerald-800 mb-2 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-check-circle text-emerald-500"></i> Misi Puasa</h3>
+                     
+                     <select className="w-full p-4 bg-white border-2 border-emerald-100 rounded-xl text-sm font-bold text-slate-700 outline-none" value={puasaStatus} onChange={(e) => setPuasaStatus(e.target.value as any)}>
+                        <option value="" disabled hidden>----</option>
+                        <option value="Penuh">✅ Puasa Penuh (100 Poin)</option>
+                        <option value="Tidak">❌ Tidak Puasa (0 Poin)</option>
+                     </select>
 
-                 {puasaStatus === 'Tidak' && (
-                     <div className="animate-slide-up">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Alasan</label>
-                        <select className="w-full p-3 bg-red-50 border border-red-100 rounded-xl text-sm font-bold text-red-600 outline-none" value={alasanTidakPuasa} onChange={(e) => setAlasanTidakPuasa(e.target.value)}>
-                            <option value="" disabled hidden>----</option>
-                            <option value="Sakit">Sakit</option>
-                            <option value="Bepergian Jauh">Bepergian Jauh</option>
-                            <option value="Menstruasi">Menstruasi</option>
-                            <option value="Sengaja">Sengaja Membatalkan</option>
-                        </select>
+                     {puasaStatus === 'Tidak' && (
+                         <div className="animate-slide-up">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Alasan</label>
+                            <select className="w-full p-3 bg-red-50 border border-red-100 rounded-xl text-sm font-bold text-red-600 outline-none" value={alasanTidakPuasa} onChange={(e) => setAlasanTidakPuasa(e.target.value)}>
+                                <option value="" disabled hidden>----</option>
+                                <option value="Sakit">Sakit</option>
+                                <option value="Bepergian Jauh">Bepergian Jauh</option>
+                                <option value="Menstruasi">Menstruasi</option>
+                                <option value="Sengaja">Sengaja Membatalkan</option>
+                            </select>
+                         </div>
+                     )}
+
+                     {/* Sahur & Buka - DISABLED IF MENSTRUASI */}
+                     <div className={`grid grid-cols-1 gap-4 pt-4 border-t border-emerald-100 ${isMenstruasi ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                        {isMenstruasi && <div className="text-xs text-red-500 font-bold text-center col-span-1"><i className="fas fa-ban mr-1"></i> Dikunci karena Menstruasi</div>}
+                        <div>
+                            <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-2">Aktivitas Sahur</label>
+                            <div className="bg-white/60 p-3 rounded-xl border border-emerald-50">
+                                <select disabled={isMenstruasi} className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 border-b border-emerald-100 outline-none mb-3" value={sahurStatus} onChange={(e) => setSahurStatus(e.target.value)}>
+                                    <option value="" disabled hidden>----</option>
+                                    <option value="Ya">✅ Ya, Saya Sahur</option>
+                                    <option value="Tidak">❌ Tidak Sahur</option>
+                                </select>
+                                {sahurStatus === 'Ya' && !isMenstruasi && (
+                                    <div className="grid grid-cols-1 gap-2 animate-slide-up">
+                                        <select className="w-full p-2 bg-emerald-50 rounded-lg text-xs font-semibold text-emerald-800 outline-none" value={sahurLokasi} onChange={(e) => setSahurLokasi(e.target.value)}>
+                                            <option value="" disabled hidden>--Lokasi--</option>
+                                            <option value="Sahur Bersama Keluarga">🏠 Sahur Bersama Keluarga</option>
+                                            <option value="Sahur di Masjid">🕌 Sahur di Masjid</option>
+                                            <option value="Sahur di Musala">🕋 Sahur di Musala</option>
+                                        </select>
+                                        <select className="w-full p-2 bg-emerald-50 rounded-lg text-xs font-semibold text-emerald-800 outline-none" value={sahurWaktu} onChange={(e) => setSahurWaktu(e.target.value)}>
+                                            <option value="" disabled hidden>--Waktu--</option>
+                                            <option value="Sahur di Akhir (15 menit sebelum imsak)">🕑 Sahur di Akhir (15 mnt sblm imsak)</option>
+                                            <option value="Sahur di Awal">🕐 Sahur di Awal</option>
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-2">Aktivitas Buka</label>
+                            <div className={`bg-white/60 p-3 rounded-xl border border-emerald-50 ${isLocked('Buka') ? 'opacity-50 bg-slate-100' : ''}`}>
+                                <select disabled={isLocked('Buka') || isMenstruasi} className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 outline-none" value={bukaStatus} onChange={(e) => setBukaStatus(e.target.value)}>
+                                    <option value="" disabled hidden>----</option>
+                                    <option value="Segera setelah Azan Magrib">🥣 Segera setelah Azan</option>
+                                    <option value="Setelah Salat Magrib">🕌 Setelah Salat Magrib</option>
+                                    <option value="Setelah Salat Tarawih">🌙 Setelah Salat Tarawih</option>
+                                </select>
+                                {isLocked('Buka') && !isMenstruasi && renderLockMessage('Tunggu Magrib')}
+                            </div>
+                        </div>
                      </div>
-                 )}
-
-                 {/* Sahur & Buka - DISABLED IF MENSTRUASI */}
-                 <div className={`grid grid-cols-1 gap-4 pt-4 border-t border-emerald-100 ${isMenstruasi ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-                    {isMenstruasi && <div className="text-xs text-red-500 font-bold text-center col-span-1"><i className="fas fa-ban mr-1"></i> Dikunci karena Menstruasi</div>}
-                    <div>
-                        <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-2">Aktivitas Sahur</label>
-                        <div className="bg-white/60 p-3 rounded-xl border border-emerald-50">
-                            <select disabled={isMenstruasi} className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 border-b border-emerald-100 outline-none mb-3" value={sahurStatus} onChange={(e) => setSahurStatus(e.target.value)}>
-                                <option value="" disabled hidden>----</option>
-                                <option value="Ya">✅ Ya, Saya Sahur</option>
-                                <option value="Tidak">❌ Tidak Sahur</option>
-                            </select>
-                            {sahurStatus === 'Ya' && !isMenstruasi && (
-                                <div className="grid grid-cols-1 gap-2 animate-slide-up">
-                                    <select className="w-full p-2 bg-emerald-50 rounded-lg text-xs font-semibold text-emerald-800 outline-none" value={sahurLokasi} onChange={(e) => setSahurLokasi(e.target.value)}>
-                                        <option value="" disabled hidden>--Lokasi--</option>
-                                        <option value="Sahur Bersama Keluarga">🏠 Sahur Bersama Keluarga</option>
-                                        <option value="Sahur di Masjid">🕌 Sahur di Masjid</option>
-                                        <option value="Sahur di Musala">🕋 Sahur di Musala</option>
-                                    </select>
-                                    <select className="w-full p-2 bg-emerald-50 rounded-lg text-xs font-semibold text-emerald-800 outline-none" value={sahurWaktu} onChange={(e) => setSahurWaktu(e.target.value)}>
-                                        <option value="" disabled hidden>--Waktu--</option>
-                                        <option value="Sahur di Akhir (15 menit sebelum imsak)">🕑 Sahur di Akhir (15 mnt sblm imsak)</option>
-                                        <option value="Sahur di Awal">🕐 Sahur di Awal</option>
-                                    </select>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-2">Aktivitas Buka</label>
-                        <div className={`bg-white/60 p-3 rounded-xl border border-emerald-50 ${isLocked('Buka') ? 'opacity-50 bg-slate-100' : ''}`}>
-                            <select disabled={isLocked('Buka') || isMenstruasi} className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 outline-none" value={bukaStatus} onChange={(e) => setBukaStatus(e.target.value)}>
-                                <option value="" disabled hidden>----</option>
-                                <option value="Segera setelah Azan Magrib">🥣 Segera setelah Azan</option>
-                                <option value="Setelah Salat Magrib">🕌 Setelah Salat Magrib</option>
-                                <option value="Setelah Salat Tarawih">🌙 Setelah Salat Tarawih</option>
-                            </select>
-                            {isLocked('Buka') && !isMenstruasi && renderLockMessage('Tunggu Magrib')}
-                        </div>
-                    </div>
                  </div>
-             </div>
-          </div>
+              </div>
+          )}
 
           {/* Salat Fardu - DISABLED IF MENSTRUASI */}
           <div className={`glass-card p-1.5 rounded-[28px] ${isHaid || isMenstruasi ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
@@ -463,6 +455,9 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                  <h3 className="font-bold text-amber-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-medal text-amber-500"></i> Bonus Pahala</h3>
                  <div className="grid grid-cols-1 gap-3 mb-4">
                      {Object.keys(sunahStatus).map(s => {
+                         // PRE-RAMADAN LOGIC: Hide Tarawih & Witir
+                         if (isPreRamadan && (s === 'Tarawih' || s === 'Witir')) return null;
+
                          const locked = isLocked(s);
                          return (
                             <div key={s} className={`bg-white p-3 rounded-xl border border-amber-100 shadow-sm ${locked ? 'opacity-60 bg-slate-50' : ''}`}>
@@ -753,7 +748,7 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
     );
 };
 
-// --- Tab Literasi (Mobile Optimized - Unmuted Manual Play) ---
+// ... (TabLiterasi, TabMateri, TabProfile remain the same) ...
 export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);

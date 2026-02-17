@@ -84,7 +84,7 @@ export const LoginPage = ({ onLogin }: { onLogin: (u: User) => void }) => {
                 <div className="space-y-4">
                    <div className="relative">
                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-4 mb-1 block">
-                          {tab === 'nisn' ? 'NISN Murid' : 'Username'}
+                          {tab === 'nisn' ? 'NISN (Username)' : 'Username'}
                        </label>
                        <input 
                              type="text"
@@ -98,13 +98,13 @@ export const LoginPage = ({ onLogin }: { onLogin: (u: User) => void }) => {
 
                    <div className="relative">
                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-4 mb-1 block">
-                          Password
+                          {tab === 'nisn' ? 'Nomor Induk Siswa' : 'Password'}
                        </label>
                        <div className="relative">
                            <input 
                               type={showPassword ? "text" : "password"}
                               className="w-full pl-6 pr-12 py-4 bg-white border border-transparent focus:border-primary-300 rounded-[24px] text-slate-800 font-bold outline-none shadow-sm transition-all placeholder:text-slate-300 text-sm"
-                              placeholder={tab === 'nisn' ? 'NISN' : 'Password'}
+                              placeholder={tab === 'nisn' ? 'Nomor Induk Siswa (Contoh: 18576)' : 'Password'}
                               value={password}
                               onChange={e => setPassword(e.target.value)}
                            />

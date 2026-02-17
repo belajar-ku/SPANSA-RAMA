@@ -69,7 +69,12 @@ export interface DailyLog {
     details: DailyLogDetails; 
 }
 
-export const CLASSES = ['7A', '7B', '7C', '8A', '8B', '8C', '9A', '9B', '9C'];
+export const CLASSES = [
+  '7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H',
+  '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H',
+  '9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H'
+];
+
 export const APP_LOGO_URL = "https://lh3.googleusercontent.com/d/1tQPCSlVqJv08xNKeZRZhtRKC8T8PF-Uj?authuser=0";
 
 export const RAMADAN_QUOTES = [

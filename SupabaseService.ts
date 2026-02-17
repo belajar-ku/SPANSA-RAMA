@@ -28,8 +28,19 @@ export const SupabaseService = {
           return { success: true, user: { id: 'master', username: 'admin', password: 'Spansa@1', name: 'Administrator', role: 'admin', gender: 'L' } };
       }
 
-      const { data, error } = await supabase.from('users').select('*').eq('username', cleanUser).eq('password', cleanPass).maybeSingle();
+      // First attempt: Exact match
+      let { data, error } = await supabase.from('users').select('*').eq('username', cleanUser).eq('password', cleanPass).maybeSingle();
       
+      // Retry Logic: Handle '0xxx NISN format (Excel import artifact)
+      if (!data && type === 'nisn') {
+          const altUser = "'" + cleanUser;
+          const { data: dataAlt, error: errorAlt } = await supabase.from('users').select('*').eq('username', altUser).eq('password', cleanPass).maybeSingle();
+          if (dataAlt) {
+              data = dataAlt;
+              error = errorAlt;
+          }
+      }
+
       if (error) throw error;
       if (!data) return { success: false, error: 'Username atau Password salah.' };
 
