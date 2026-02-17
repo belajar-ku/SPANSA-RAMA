@@ -226,6 +226,59 @@ const App = () => {
     setLoading(false);
   }, []);
 
+  // --- SECURITY ENFORCEMENT FOR MURID ---
+  useEffect(() => {
+    if (user && user.role === 'murid') {
+        // 1. Disable Context Menu (Right Click)
+        const blockContextMenu = (e: Event) => e.preventDefault();
+
+        // 2. Disable Copy/Cut/Paste Events
+        const blockClipboard = (e: ClipboardEvent) => {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                title: 'Fitur Dibatasi',
+                text: 'Fitur Copy-Paste dimatikan untuk menjaga integritas pengisian.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        };
+
+        // 3. Disable Shortcuts (Ctrl+C, Ctrl+V, etc)
+        const blockKeys = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && ['c','v','x','p','a'].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+            }
+        };
+
+        // Add Listeners
+        document.addEventListener('contextmenu', blockContextMenu);
+        document.addEventListener('copy', blockClipboard);
+        document.addEventListener('paste', blockClipboard);
+        document.addEventListener('cut', blockClipboard);
+        document.addEventListener('keydown', blockKeys);
+
+        // Add CSS for User Select None to Body
+        document.body.style.userSelect = 'none';
+        document.body.style.webkitUserSelect = 'none';
+        // Disable touch callout on iOS (magnifier)
+        document.body.style.setProperty('-webkit-touch-callout', 'none');
+
+        return () => {
+            // Cleanup on Logout/Unmount
+            document.removeEventListener('contextmenu', blockContextMenu);
+            document.removeEventListener('copy', blockClipboard);
+            document.removeEventListener('paste', blockClipboard);
+            document.removeEventListener('cut', blockClipboard);
+            document.removeEventListener('keydown', blockKeys);
+            
+            document.body.style.userSelect = 'auto';
+            document.body.style.webkitUserSelect = 'auto';
+            document.body.style.removeProperty('-webkit-touch-callout');
+        };
+    }
+  }, [user]);
+
   const handleLogin = (u: User) => {
       setUser(u);
       if (u.role === 'admin' || u.role === 'guru') setActiveTab('monitoring');
