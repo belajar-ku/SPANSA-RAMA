@@ -25,9 +25,15 @@ const Header = ({ user, activeTab }: { user: User, activeTab: string }) => (
   );
 
 // --- Target Modal ---
-const TargetModal = ({ user, onClose }: { user: User, onClose: () => void }) => {
+const TargetModal = ({ user, onClose, initialData }: { user: User, onClose: () => void, initialData: RamadanTarget | null }) => {
     const [step, setStep] = useState(1);
-    const [formData, setFormData] = useState<RamadanTarget>({ startDate: '', targetPuasa: '', targetTarawih: '', targetTadarus: '', targetKarakter: '' });
+    const [formData, setFormData] = useState<RamadanTarget>({ 
+        startDate: initialData?.startDate || '', 
+        targetPuasa: initialData?.targetPuasa || '', 
+        targetTarawih: initialData?.targetTarawih || '', 
+        targetTadarus: initialData?.targetTadarus || '', 
+        targetKarakter: initialData?.targetKarakter || '' 
+    });
     const [settings, setSettings] = useState<any>({});
 
     useEffect(() => {
@@ -59,7 +65,7 @@ const TargetModal = ({ user, onClose }: { user: User, onClose: () => void }) => 
                                 </button>
                             )}
                             <div className="text-center text-xs text-slate-400">- atau pilih manual -</div>
-                            <input type="date" className="w-full p-3 bg-slate-100 rounded-xl" onChange={e => setFormData({...formData, startDate: e.target.value})} />
+                            <input type="date" className="w-full p-3 bg-slate-100 rounded-xl" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} />
                          </div>
                          <button onClick={() => { if(formData.startDate) setStep(2); else Swal.fire('Pilih Tanggal', '', 'warning'); }} className="w-full py-4 bg-primary-600 text-white font-bold rounded-[20px] shadow-lg">Lanjut</button>
                     </div>
@@ -68,11 +74,24 @@ const TargetModal = ({ user, onClose }: { user: User, onClose: () => void }) => 
                 {step === 2 && (
                     <div className="animate-slide-up">
                         <h3 className="text-xl font-black text-center mb-4 text-slate-800">Target Ramadan Kamu</h3>
+                        <p className="text-xs text-slate-500 text-center mb-4">Edit targetmu kapan saja di sini.</p>
                         <div className="space-y-3 mb-6">
-                            <input type="text" className="w-full p-3 border rounded-xl text-sm" placeholder="Target Puasa (misal: Full)" onChange={e => setFormData({...formData, targetPuasa: e.target.value})} />
-                            <input type="text" className="w-full p-3 border rounded-xl text-sm" placeholder="Target Tarawih" onChange={e => setFormData({...formData, targetTarawih: e.target.value})} />
-                            <input type="text" className="w-full p-3 border rounded-xl text-sm" placeholder="Target Tadarus" onChange={e => setFormData({...formData, targetTadarus: e.target.value})} />
-                            <input type="text" className="w-full p-3 border rounded-xl text-sm" placeholder="Target Karakter" onChange={e => setFormData({...formData, targetKarakter: e.target.value})} />
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Target Puasa</label>
+                                <input type="text" className="w-full p-3 border rounded-xl text-sm font-bold text-slate-700" placeholder="Contoh: Full 30 Hari" value={formData.targetPuasa} onChange={e => setFormData({...formData, targetPuasa: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Target Tarawih</label>
+                                <input type="text" className="w-full p-3 border rounded-xl text-sm font-bold text-slate-700" placeholder="Contoh: Tidak Bolong" value={formData.targetTarawih} onChange={e => setFormData({...formData, targetTarawih: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Target Tadarus</label>
+                                <input type="text" className="w-full p-3 border rounded-xl text-sm font-bold text-slate-700" placeholder="Contoh: Khatam 1x" value={formData.targetTadarus} onChange={e => setFormData({...formData, targetTadarus: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase">Target Karakter</label>
+                                <input type="text" className="w-full p-3 border rounded-xl text-sm font-bold text-slate-700" placeholder="Contoh: Lebih Sabar" value={formData.targetKarakter} onChange={e => setFormData({...formData, targetKarakter: e.target.value})} />
+                            </div>
                         </div>
                         <button onClick={handleSave} className="w-full py-4 mt-2 bg-primary-600 text-white font-bold rounded-[20px] shadow-lg">Simpan Target</button>
                     </div>
@@ -87,8 +106,17 @@ const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('harian');
   const [showTargetModal, setShowTargetModal] = useState(false);
+  const [targetData, setTargetData] = useState<RamadanTarget | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDateForEdit, setSelectedDateForEdit] = useState(getWIBDate());
+
+  // Function to load target and show modal
+  const checkTargetAndShow = async (userId: string) => {
+      const t = await SupabaseService.getRamadanTarget(userId);
+      setTargetData(t);
+      // Always show modal on login/load so they can see/edit
+      setShowTargetModal(true); 
+  };
 
   useEffect(() => {
     const u = SupabaseService.getUser();
@@ -97,7 +125,7 @@ const App = () => {
         if (u.role === 'admin' || u.role === 'guru') setActiveTab('monitoring');
         else if (u.role === 'murid') {
             setActiveTab('harian');
-            SupabaseService.getRamadanTarget(u.id).then(t => { if(!t) setShowTargetModal(true); });
+            checkTargetAndShow(u.id);
         }
     }
     setLoading(false);
@@ -108,7 +136,7 @@ const App = () => {
       if (u.role === 'admin' || u.role === 'guru') setActiveTab('monitoring');
       else {
           setActiveTab('harian');
-          SupabaseService.getRamadanTarget(u.id).then(t => { if(!t) setShowTargetModal(true); });
+          checkTargetAndShow(u.id);
       }
   };
 
@@ -148,7 +176,7 @@ const App = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-32">
         <Header user={user} activeTab={activeTab} />
-        {showTargetModal && <TargetModal user={user} onClose={() => setShowTargetModal(false)} />}
+        {showTargetModal && <TargetModal user={user} onClose={() => setShowTargetModal(false)} initialData={targetData} />}
 
         <main className="max-w-md mx-auto relative z-10">
             {activeTab === 'harian' && <TabHarian user={user} initialDate={selectedDateForEdit} />}

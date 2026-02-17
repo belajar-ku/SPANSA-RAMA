@@ -90,7 +90,7 @@ export const LoginPage = ({ onLogin }: { onLogin: (u: User) => void }) => {
                              type="text"
                              autoCapitalize="none"
                              className="w-full pl-6 pr-6 py-4 bg-white border border-transparent focus:border-primary-300 rounded-[24px] text-slate-800 font-bold outline-none shadow-sm transition-all placeholder:text-slate-300 text-sm"
-                             placeholder={tab === 'nisn' ? 'Contoh: 0012345678' : 'Contoh: admin'}
+                             placeholder={tab === 'nisn' ? 'Contoh: 0012345678' : 'Contoh: 198706092019031004'}
                              value={val}
                              onChange={e => setVal(e.target.value)}
                           />

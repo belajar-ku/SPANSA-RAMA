@@ -179,6 +179,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const updateSholat = (p: string, v: string) => setSholatStatus(prev => ({...prev, [p]: v}));
   const updateSunah = (s: string, v: string) => setSunahStatus(prev => ({...prev, [s]: v}));
 
+  // Render Logic Helpers
   const renderLockMessage = (msg: string) => <div className="text-[10px] text-red-400 italic mt-1 font-bold bg-red-50 p-1 rounded"><i className="fas fa-lock mr-1"></i> {msg}</div>;
 
   const IBADAH_OPTIONS = (
@@ -232,6 +233,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
           </div>
        </div>
 
+       {/* HEADER & DATE */}
        <div className="glass-card p-1.5 rounded-[32px] mb-6 shadow-lg">
             <div className="bg-white rounded-[28px] p-4 flex justify-between items-center border border-slate-100">
                 <div>
@@ -262,6 +264,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              </div>
           )}
 
+          {/* Puasa Section */}
           <div className={`glass-card p-1.5 rounded-[28px] ${isHaid ? 'opacity-50 pointer-events-none' : ''}`}>
              <div className="bg-gradient-to-br from-emerald-50 to-white rounded-[24px] p-6 border border-white/60 space-y-4 shadow-sm relative overflow-hidden">
                  <h3 className="font-bold text-emerald-800 mb-2 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-check-circle text-emerald-500"></i> Misi Puasa</h3>
@@ -285,10 +288,12 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                      </div>
                  )}
 
+                 {/* Sahur & Buka */}
                  <div className="grid grid-cols-1 gap-4 pt-4 border-t border-emerald-100">
                     <div>
                         <label className="text-[10px] font-bold text-emerald-600 uppercase block mb-2">Aktivitas Sahur</label>
                         <div className="bg-white/60 p-3 rounded-xl border border-emerald-50">
+                            {/* Sahur bebas diisi kapanpun */}
                             <select className="w-full p-2 bg-transparent text-sm font-bold text-slate-700 border-b border-emerald-100 outline-none mb-3" value={sahurStatus} onChange={(e) => setSahurStatus(e.target.value)}>
                                 <option value="" disabled hidden>----</option>
                                 <option value="Ya">✅ Ya, Saya Sahur</option>
@@ -327,6 +332,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              </div>
           </div>
 
+          {/* Salat Fardu */}
           <div className={`glass-card p-1.5 rounded-[28px] ${isHaid ? 'opacity-50 pointer-events-none' : ''}`}>
              <div className="bg-gradient-to-br from-sky-50 to-white rounded-[24px] p-6 border border-white/60 space-y-3 shadow-sm relative overflow-hidden">
                  <h3 className="font-bold text-sky-800 mb-2 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-pray text-sky-500"></i> Salat 5 Waktu</h3>
@@ -349,6 +355,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              </div>
           </div>
 
+          {/* Sunah Section */}
           <div className="glass-card p-1.5 rounded-[28px]">
              <div className="bg-gradient-to-br from-amber-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
                  <h3 className="font-bold text-amber-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-medal text-amber-500"></i> Bonus Pahala</h3>
@@ -371,6 +378,63 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              </div>
           </div>
 
+          {/* Misi Tadarus */}
+          <div className="glass-card p-1.5 rounded-[28px]">
+             <div className="bg-gradient-to-br from-teal-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
+                 <h3 className="font-bold text-teal-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-book-quran text-teal-500"></i> Misi Tadarus</h3>
+                 <div className="space-y-3">
+                     <select className="w-full p-3 bg-white border border-teal-100 rounded-xl text-sm font-bold text-slate-700 outline-none" value={tadarusStatus} onChange={(e) => setTadarusStatus(e.target.value)}>
+                         <option value="" disabled hidden>----</option>
+                         <option value="Ya">✅ Ya, Membaca Al-Qur'an</option>
+                         <option value="Tidak">❌ Tidak / Berhalangan</option>
+                     </select>
+                     {tadarusStatus === 'Ya' && (
+                         <div className="animate-slide-up">
+                             <input type="text" className="w-full p-3 bg-teal-50 border border-teal-100 rounded-xl text-sm placeholder:text-teal-300" placeholder="Surah & Ayat berapa?" value={tadarusNote} onChange={(e) => setTadarusNote(e.target.value)} />
+                         </div>
+                     )}
+                 </div>
+             </div>
+          </div>
+
+          {/* Misi Kebaikan (Sedekah) - UPDATED TO MATCH REQUEST */}
+          <div className="glass-card p-1.5 rounded-[28px]">
+             <div className="bg-gradient-to-br from-rose-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
+                 <h3 className="font-bold text-rose-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-hand-holding-heart text-rose-500"></i> Misi Kebaikan</h3>
+                 <div className="space-y-3">
+                    <div>
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">SEDEKAH DIRI (JUJUR/SOPAN)</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Apa kebaikanmu hari ini?" value={sedekahDiri} onChange={(e) => setSedekahDiri(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">BANTU ORANG TUA</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Cuci piring" value={sedekahRumah} onChange={(e) => setSedekahRumah(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-rose-400 uppercase mb-1 block">AKSI SOSIAL</label>
+                        <input type="text" className="w-full p-3 bg-white border border-rose-100 rounded-xl text-sm" placeholder="Contoh: Buang sampah pada tempatnya" value={sedekahMasyarakat} onChange={(e) => setSedekahMasyarakat(e.target.value)} />
+                    </div>
+                 </div>
+             </div>
+          </div>
+
+          {/* Jurnal Belajar - UPDATED TO MATCH REQUEST */}
+          <div className="glass-card p-1.5 rounded-[28px]">
+             <div className="bg-gradient-to-br from-blue-50 to-white rounded-[24px] p-6 border border-white/60 shadow-sm relative overflow-hidden">
+                 <h3 className="font-bold text-blue-800 mb-4 flex items-center gap-2 text-lg relative z-10"><i className="fas fa-book-open text-blue-500"></i> Jurnal Belajar</h3>
+                 <div className="space-y-3">
+                     <div>
+                         <label className="text-[10px] font-bold text-blue-400 uppercase mb-1 block">MAPEL</label>
+                         <input type="text" className="w-full p-3 bg-white border border-blue-100 rounded-xl text-sm" placeholder="Matematika" value={belajarMapel} onChange={(e) => setBelajarMapel(e.target.value)} />
+                     </div>
+                     <div>
+                         <label className="text-[10px] font-bold text-blue-400 uppercase mb-1 block">APA YANG DIPELAJARI?</label>
+                         <input type="text" className="w-full p-3 bg-white border border-blue-100 rounded-xl text-sm" placeholder="Ringkasan materi..." value={belajarTopik} onChange={(e) => setBelajarTopik(e.target.value)} />
+                     </div>
+                 </div>
+             </div>
+          </div>
+
           <div className="space-y-3">
             <button type="button" onClick={() => handleAction(true)} className="w-full py-3 bg-amber-400 text-amber-900 font-bold text-lg rounded-[24px] shadow-lg border-b-4 border-amber-600"><i className="fas fa-save mr-2"></i> Simpan Sementara</button>
             <button type="button" onClick={() => handleAction(false)} className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-bold text-lg rounded-[24px] shadow-lg">Kirim Laporan</button>
@@ -380,11 +444,12 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   );
 };
 
-// --- Tab Progress (NEW 2-ROWS SPLIT) ---
+// --- Tab Progress (NEW 2-TAB SPLIT) ---
 export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: string, type: 'harian' | 'literasi') => void }) => {
     const [logs, setLogs] = useState<any[]>([]);
     const [startDate, setStartDate] = useState('');
     const [loading, setLoading] = useState(true);
+    const [subTab, setSubTab] = useState<'ibadah' | 'literasi'>('ibadah');
 
     useEffect(() => {
         const init = async () => {
@@ -421,6 +486,16 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
                  <p className="text-xs opacity-80">Pantau konsistensi ibadah & literasimu</p>
              </div>
 
+             {/* Sub Tab Switcher */}
+             <div className="flex p-1 bg-slate-200 rounded-xl mb-6 shadow-inner">
+                 <button onClick={() => setSubTab('ibadah')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${subTab === 'ibadah' ? 'bg-white text-cyan-600 shadow-md transform scale-100' : 'text-slate-500 hover:bg-white/50'}`}>
+                     Skor Ibadah
+                 </button>
+                 <button onClick={() => setSubTab('literasi')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${subTab === 'literasi' ? 'bg-white text-blue-600 shadow-md transform scale-100' : 'text-slate-500 hover:bg-white/50'}`}>
+                     Status Literasi
+                 </button>
+             </div>
+
              <div className="space-y-4">
                  {days.map((date, idx) => {
                      const log = logs.find(l => l.date === date);
@@ -432,50 +507,49 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
                      const literasiPct = hasLiterasi ? 100 : 0;
 
                      return (
-                         <div key={date} className="glass-card p-4 rounded-[24px] relative overflow-hidden">
-                             <div className="flex gap-3 items-center mb-4">
-                                 <div className="bg-slate-800 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-md">{dayNum}</div>
-                                 <p className="text-xs font-black text-slate-600 uppercase tracking-widest">{date}</p>
+                         <div key={date} className="glass-card p-4 rounded-[24px] relative overflow-hidden flex items-center justify-between">
+                             <div className="flex gap-3 items-center flex-1">
+                                 <div className="bg-slate-800 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-md shrink-0">{dayNum}</div>
+                                 <div className="w-full">
+                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{date}</p>
+                                     
+                                     {subTab === 'ibadah' && (
+                                         <div>
+                                            <div className="flex justify-between text-[10px] font-bold text-slate-700 mb-1">
+                                                <span>Poin Harian</span>
+                                                <span>{log?.total_points || 0}</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full transition-all duration-1000 ${isFilled ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-transparent'}`} style={{width: `${scorePct}%`}}></div>
+                                            </div>
+                                         </div>
+                                     )}
+
+                                     {subTab === 'literasi' && (
+                                         <div>
+                                            <div className="flex justify-between text-[10px] font-bold text-slate-700 mb-1">
+                                                <span>Ketercapaian</span>
+                                                <span className={hasLiterasi ? "text-blue-500" : "text-slate-400"}>{hasLiterasi ? "Selesai" : "-"}</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full transition-all duration-1000 ${hasLiterasi ? 'bg-gradient-to-r from-blue-400 to-indigo-500' : 'bg-transparent'}`} style={{width: `${literasiPct}%`}}></div>
+                                            </div>
+                                         </div>
+                                     )}
+                                 </div>
                              </div>
-                             
-                             <div className="space-y-4">
-                                 {/* Ibadah Row */}
-                                 <div className="flex items-center gap-3">
-                                    <div className="flex-1">
-                                        <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1">
-                                            <span>Skor Ibadah</span>
-                                            <span>{log?.total_points || 0} Poin</span>
-                                        </div>
-                                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                            <div className={`h-full rounded-full transition-all duration-1000 ${isFilled ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-transparent'}`} style={{width: `${scorePct}%`}}></div>
-                                        </div>
-                                    </div>
-                                    <button 
-                                        onClick={() => onEdit(date, 'harian')} 
-                                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition shadow-sm ${isFilled ? 'bg-slate-100 text-slate-600' : 'bg-green-100 text-green-600'}`}
-                                    >
+
+                             <div className="ml-4">
+                                {subTab === 'ibadah' && (
+                                    <button onClick={() => onEdit(date, 'harian')} className={`w-16 py-2 rounded-xl text-[10px] font-bold uppercase transition shadow-sm ${isFilled ? 'bg-slate-100 text-slate-600' : 'bg-green-100 text-green-600'}`}>
                                         {isFilled ? 'Edit' : 'Isi'}
                                     </button>
-                                 </div>
-
-                                 {/* Literasi Row */}
-                                 <div className="flex items-center gap-3">
-                                    <div className="flex-1">
-                                        <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1">
-                                            <span>Status Literasi</span>
-                                            <span className={hasLiterasi ? "text-blue-500" : "text-slate-400"}>{hasLiterasi ? "Selesai" : "-"}</span>
-                                        </div>
-                                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                                            <div className={`h-full rounded-full transition-all duration-1000 ${hasLiterasi ? 'bg-gradient-to-r from-blue-400 to-indigo-500' : 'bg-transparent'}`} style={{width: `${literasiPct}%`}}></div>
-                                        </div>
-                                    </div>
-                                    <button 
-                                        onClick={() => onEdit(date, 'literasi')} 
-                                        className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition shadow-sm ${hasLiterasi ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-600'}`}
-                                    >
+                                )}
+                                {subTab === 'literasi' && (
+                                    <button onClick={() => onEdit(date, 'literasi')} className={`w-16 py-2 rounded-xl text-[10px] font-bold uppercase transition shadow-sm ${hasLiterasi ? 'bg-slate-100 text-slate-600' : 'bg-blue-100 text-blue-600'}`}>
                                         {hasLiterasi ? 'Lihat' : 'Isi'}
                                     </button>
-                                 </div>
+                                )}
                              </div>
                          </div>
                      );
