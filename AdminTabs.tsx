@@ -56,17 +56,8 @@ export const TabMonitoring = ({ currentUser }: { currentUser?: User }) => {
                         <div className="text-right">
                             <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 text-center border border-white/30">
                                 <span className="block text-2xl font-black">{classRank.points}</span>
-                                <span className="text-[8px] font-bold uppercase opacity-80">Rata-rata</span>
+                                <span className="text-[8px] font-bold uppercase opacity-80">Total Poin Kelas</span>
                             </div>
-                        </div>
-                    </div>
-                    {/* Stats Bar */}
-                    <div className="mt-4 flex gap-4 text-xs font-bold opacity-90 border-t border-white/20 pt-3">
-                        <div className="flex items-center gap-2">
-                            <i className="fas fa-users"></i> Partisipasi: {classRank.details?.participation}%
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <i className="fas fa-star"></i> Poin Aktif: {classRank.details?.avgActive}
                         </div>
                     </div>
                 </div>

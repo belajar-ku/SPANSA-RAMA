@@ -322,11 +322,11 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                <i className={`fas ${isDraft ? 'fa-edit' : 'fa-check'}`}></i>
            </div>
            
-           <h3 className="text-2xl font-black text-slate-800">{isDraft ? 'Draft Tersimpan Sementara' : 'Laporan Terkirim'}</h3>
+           <h3 className="text-2xl font-black text-slate-800">{isDraft ? 'Draft Terkirim Sementara' : 'Laporan Terkirim'}</h3>
            <p className="text-slate-500 text-sm mt-2">Data tanggal <strong>{selectedDate}</strong> {isDraft ? 'belum dikirim final.' : 'sudah tersimpan.'}</p>
            
            <button onClick={() => setSubmitted(false)} className="mt-8 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-full font-bold text-sm shadow-md hover:bg-slate-50">
-               {isDraft ? 'Lanjutkan Edit Laporan Ini' : 'Edit Laporan Ini'}
+               {isDraft ? 'Edit Laporan Ini' : 'Edit Laporan Ini'}
            </button>
         </div>
      );
@@ -736,7 +736,7 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
                 <i className="fas fa-trophy text-6xl absolute -bottom-4 -right-4 opacity-20"></i>
                 <h2 className="text-2xl font-black mb-1">Papan Juara</h2>
                 <p className="text-xs font-bold opacity-90">
-                    {tab === 'Kelas' ? 'Kategori Antar Kelas' : `Kategori ${tab === 'L' ? 'Putra' : 'Putri'}`}
+                    {tab === 'Kelas' ? 'Total Poin Akumulasi' : `Kategori ${tab === 'L' ? 'Putra' : 'Putri'}`}
                 </p>
             </div>
 
@@ -772,7 +772,7 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
                                         <h4 className={`font-bold text-sm ${textClass}`}>{u.name}</h4>
                                         {/* Jika Mode Kelas, tampilkan detail partisipasi */}
                                         {tab === 'Kelas' ? (
-                                            <p className="text-[10px] font-bold text-slate-400">Partisipasi: {u.details?.participation}% ({u.details?.totalStudents} siswa)</p>
+                                            <p className="text-[10px] font-bold text-slate-400">Total Poin</p>
                                         ) : (
                                             <p className="text-[10px] font-bold text-slate-400">{u.kelas || 'Umum'}</p>
                                         )}
@@ -780,7 +780,7 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
                                 </div>
                                 <div className="text-right">
                                     <span className="font-black text-lg text-primary-600">{u.points}</span>
-                                    <span className="text-[10px] text-slate-400 block -mt-1">{tab === 'Kelas' ? 'Rerata' : 'Poin'}</span>
+                                    <span className="text-[10px] text-slate-400 block -mt-1">{tab === 'Kelas' ? 'Total' : 'Poin'}</span>
                                 </div>
                             </div>
                         );

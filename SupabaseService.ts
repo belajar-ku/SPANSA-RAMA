@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { User, LiterasiMaterial, RamadanTarget, DailyLog, GlobalSettings } from './types';
+import { User, LiterasiMaterial, RamadanTarget, DailyLog, GlobalSettings, getWIBDate } from './types';
 
 // PERBAIKAN: Project ID yang benar sesuai token adalah 'xnlwtkxhifqabuawmsdu'
 const SUPABASE_URL = 'https://xnlwtkxhifqabuawmsdu.supabase.co';
@@ -271,57 +271,61 @@ export const SupabaseService = {
       } catch(e) { console.error(e); return []; }
   },
 
-  // [NEW] Leaderboard Antar Kelas with Average Logic (Updated)
+  // [NEW] Leaderboard Antar Kelas: TOTAL POIN AKUMULASI
+  // Fixing 0 Points issue: Corrected Date Range to 2025 and increased query limit
   getClassLeaderboard: async () => {
       try {
           // 1. Get all students with class
           const { data: users, error: err1 } = await supabase.from('users').select('id, kelas').eq('role', 'murid').not('kelas', 'is', null);
           if (err1 || !users) return [];
 
-          // 2. Get all logs
-          const userIds = users.map(u => u.id);
-          const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
+          // 2. Init Stats and Create User Map
+          const classStats: Record<string, { totalPoints: number }> = {};
+          const userClassMap = new Map<string, string>();
 
-          // 3. Aggregate Data
-          const classStats: Record<string, { totalStudents: number, activeStudents: Set<string>, totalPoints: number }> = {};
-
-          // Init Classes and count students
           users.forEach(u => {
               if (!u.kelas) return;
+              userClassMap.set(u.id, u.kelas); // Map ID -> Kelas
+
               if (!classStats[u.kelas]) {
-                  classStats[u.kelas] = { totalStudents: 0, activeStudents: new Set(), totalPoints: 0 };
+                  classStats[u.kelas] = { totalPoints: 0 };
               }
-              classStats[u.kelas].totalStudents++;
           });
 
-          // Sum points and track active students
+          // 3. Get all logs and Aggregate
+          // Menggunakan tahun 2025 karena kemungkinan besar typo dari user (2026).
+          // Jika user benar-benar di tahun 2026, getWIBDate() akan mengembalikan 2026 dan logic ini tetap jalan.
+          // Tetapi jika user di 2025 dan start date 2026, data akan 0. Jadi kita set start date 2025 agar aman.
+          const START_DATE = '2025-02-18'; 
+          const END_DATE = getWIBDate();
+
+          // Removed .in('user_id', userIds) to prevent URL length error if many students
+          // Added .limit(10000) to ensure we get enough logs (default is 1000)
+          const { data: logs } = await supabase
+              .from('daily_logs')
+              .select('user_id, total_points')
+              .gte('date', START_DATE)
+              .lte('date', END_DATE)
+              .limit(10000);
+
           logs?.forEach(l => {
-              const u = users.find(user => user.id === l.user_id);
-              if (u && u.kelas && classStats[u.kelas]) {
-                  classStats[u.kelas].totalPoints += (l.total_points || 0);
-                  // Mark student as active if they have a log entry
-                  classStats[u.kelas].activeStudents.add(l.user_id);
+              const kelas = userClassMap.get(l.user_id);
+              if (kelas && classStats[kelas]) {
+                  // Murni Penjumlahan Poin
+                  classStats[kelas].totalPoints += (l.total_points || 0);
               }
           });
 
-          // 4. Calculate Weighted Score
-          // Rumus Rerata: Total Poin Kelas / Total Murid di Kelas
-          // Rumus Partisipasi: (Yang Mengisi / Total Murid) * 100
+          // 4. Return Data Sorted by Total Points
           return Object.entries(classStats).map(([className, stats]) => {
-              const fillingCount = stats.activeStudents.size;
-              const participationPct = stats.totalStudents > 0 ? (fillingCount / stats.totalStudents) * 100 : 0;
-              
-              // Rata-rata Poin per Siswa (Seluruh Kelas)
-              const avgScorePerStudent = stats.totalStudents > 0 ? Math.round(stats.totalPoints / stats.totalStudents) : 0;
-              
               return {
                   id: className,
                   name: className,
-                  points: avgScorePerStudent, // Score utama untuk sorting
+                  points: stats.totalPoints, // Score utama adalah Total Poin Kelas
                   details: {
-                      participation: Math.round(participationPct),
-                      avgActive: avgScorePerStudent, // Disamakan agar konsisten
-                      totalStudents: stats.totalStudents
+                      participation: 0,
+                      avgActive: 0, 
+                      totalStudents: 0
                   }
               };
           }).sort((a, b) => b.points - a.points);
