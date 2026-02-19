@@ -10,14 +10,27 @@ export const TabMonitoring = ({ currentUser }: { currentUser?: User }) => {
     const [date, setDate] = useState(getWIBDate());
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    
+    // Class Rank State for Wali Kelas
+    const [classRank, setClassRank] = useState<any>(null);
 
     // If Wali Kelas, user cannot change class
     const isWaliKelas = currentUser?.role === 'guru' && !!currentUser?.kelas;
 
     const loadData = async () => {
         setLoading(true);
+        // Load Students
         const res = await SupabaseService.getMonitoringData(kelas, date);
         setData(res);
+        
+        // Load Class Rank if Wali Kelas
+        if (isWaliKelas) {
+            const leaderboard = await SupabaseService.getClassLeaderboard();
+            const myRankIndex = leaderboard.findIndex((l: any) => l.id === kelas);
+            if (myRankIndex !== -1) {
+                setClassRank({ ...leaderboard[myRankIndex], rank: myRankIndex + 1, totalClasses: leaderboard.length });
+            }
+        }
         setLoading(false);
     };
 
@@ -31,6 +44,34 @@ export const TabMonitoring = ({ currentUser }: { currentUser?: User }) => {
 
     return (
         <div className="p-6 pb-28 animate-slide-up">
+            {/* WIDGET WALI KELAS: KLASEMEN KELAS */}
+            {isWaliKelas && classRank && (
+                <div className="glass-card bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[24px] p-6 text-white mb-6 shadow-xl relative overflow-hidden">
+                    <div className="relative z-10 flex justify-between items-center">
+                        <div>
+                            <p className="text-[10px] font-bold text-purple-200 uppercase tracking-widest mb-1">PERFORMA KELAS {kelas}</p>
+                            <h2 className="text-3xl font-black mb-1">Peringkat {classRank.rank}</h2>
+                            <p className="text-xs opacity-90 font-bold">Dari {classRank.totalClasses} Kelas</p>
+                        </div>
+                        <div className="text-right">
+                            <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 text-center border border-white/30">
+                                <span className="block text-2xl font-black">{classRank.points}</span>
+                                <span className="text-[8px] font-bold uppercase opacity-80">Rata-rata</span>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Stats Bar */}
+                    <div className="mt-4 flex gap-4 text-xs font-bold opacity-90 border-t border-white/20 pt-3">
+                        <div className="flex items-center gap-2">
+                            <i className="fas fa-users"></i> Partisipasi: {classRank.details?.participation}%
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <i className="fas fa-star"></i> Poin Aktif: {classRank.details?.avgActive}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="glass-card p-4 rounded-[24px] mb-6 flex flex-col gap-3">
                 <div className="flex gap-2">
                     <select 
@@ -43,7 +84,7 @@ export const TabMonitoring = ({ currentUser }: { currentUser?: User }) => {
                     </select>
                     <input type="date" value={date} onChange={e => setDate(e.target.value)} className="flex-1 p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white" />
                 </div>
-                {isWaliKelas && <p className="text-[10px] text-primary-600 font-bold text-center"><i className="fas fa-lock mr-1"></i> Anda adalah Wali Kelas {kelas}</p>}
+                {isWaliKelas && !classRank && <p className="text-[10px] text-primary-600 font-bold text-center"><i className="fas fa-lock mr-1"></i> Anda adalah Wali Kelas {kelas}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-6">
@@ -61,19 +102,23 @@ export const TabMonitoring = ({ currentUser }: { currentUser?: User }) => {
                 <div className="max-h-[50vh] overflow-y-auto">
                     {loading ? <div className="p-10 text-center">Memuat data...</div> : (
                         <div className="divide-y divide-slate-100">
-                                {data.map(item => (
+                                {data.map((item, idx) => (
                                     <div key={item.id} className="p-4 flex items-center justify-between hover:bg-white/50">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs text-white font-bold ${item.submitted ? 'bg-green-500' : 'bg-slate-300'}`}>
-                                                {item.name.charAt(0)}
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 ${idx < 3 && item.points > 0 ? 'bg-amber-400 shadow-md' : (item.submitted ? 'bg-green-500' : 'bg-slate-300')}`}>
+                                                {idx < 3 && item.points > 0 ? <i className="fas fa-crown text-[10px]"></i> : item.name.charAt(0)}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-sm text-slate-700">{item.name}</p>
+                                                <p className="font-bold text-sm text-slate-700 line-clamp-1">{item.name}</p>
                                                 <p className="text-[10px] text-slate-500">{item.submitted ? '✅ Sudah Lapor' : '❌ Belum'}</p>
                                             </div>
                                         </div>
-                                        <div className="text-right">
-                                            {item.submitted && <span className="text-xs font-bold text-primary-600">{item.points} Poin</span>}
+                                        <div className="text-right shrink-0">
+                                            {item.submitted ? (
+                                                <span className="text-xs font-black text-primary-600">{item.points} Poin</span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold text-slate-300">-</span>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

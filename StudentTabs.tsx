@@ -39,6 +39,7 @@ const getVideoId = (url: string) => {
 // --- Tab Harian ---
 export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [submitted, setSubmitted] = useState(false);
+  const [isDraft, setIsDraft] = useState(false); // NEW: Track draft status
   const [selectedDate, setSelectedDate] = useState(initialDate || getWIBDate());
   const [currentTime, setCurrentTime] = useState(new Date());
   const [targetStartDate, setTargetStartDate] = useState('');
@@ -130,6 +131,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   useEffect(() => {
      setLoading(true);
      setSubmitted(false);
+     setIsDraft(false);
      
      // Reset Form
      setPuasaStatus(''); setAlasanTidakPuasa(''); setIsHaid(false);
@@ -149,6 +151,10 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
          if (data) {
              setSubmitted(true);
              const d = data.details;
+             
+             // Check if it's a draft
+             setIsDraft(!!d.is_draft);
+
              if(d.puasaStatus) setPuasaStatus(d.puasaStatus as any);
              if(d.isHaid) setIsHaid(d.isHaid);
              if(d.alasanTidakPuasa) setAlasanTidakPuasa(d.alasanTidakPuasa);
@@ -202,7 +208,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const quoteIndex = (currentDay - 1) % RAMADAN_QUOTES.length;
   const currentQuote = RAMADAN_QUOTES[quoteIndex >= 0 ? quoteIndex : 0];
 
-  const handleAction = async (isDraft: boolean) => {
+  const handleAction = async (draftAction: boolean) => {
     // Check if menstruasi
     const isMenstruasi = puasaStatus === 'Tidak' && alasanTidakPuasa === 'Menstruasi';
 
@@ -230,7 +236,8 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
           tadarusNote: isMenstruasi ? '' : finalTadarusNote,
           // Allowed fields
           sedekahDiri, sedekahRumah, sedekahMasyarakat,
-          belajarMapel, belajarTopik
+          belajarMapel, belajarTopik,
+          is_draft: draftAction // IMPORTANT: Save draft status
     };
 
     const payload: DailyLog = {
@@ -245,8 +252,13 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
     const success = await SupabaseService.saveDailyLog(payload);
     
     if (success) {
-        if (isDraft) Swal.fire({ icon: 'success', title: 'Tersimpan Sementara', timer: 1500, showConfirmButton: false });
+        if (draftAction) {
+            setIsDraft(true);
+            setSubmitted(true);
+            Swal.fire({ icon: 'success', title: 'Tersimpan Sementara', timer: 1500, showConfirmButton: false });
+        }
         else {
+            setIsDraft(false);
             setSubmitted(true);
             Swal.fire({ icon: 'success', title: 'Alhamdulillah', text: 'Laporan hari ini berhasil dikirim!', confirmButtonColor: '#0ea5e9' });
         }
@@ -290,7 +302,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
      return (
         <div className="p-6 pb-28 animate-slide-up min-h-[60vh] flex flex-col items-center">
            <div className="w-full glass-card p-4 rounded-[32px] mb-8 text-center bg-white border border-slate-100 shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-purple-400"></div>
+                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${isDraft ? 'from-yellow-400 to-orange-400' : 'from-blue-400 to-purple-400'}`}></div>
                 <div className="flex justify-between items-center px-2">
                     <div className="text-left">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Waktu & Tanggal</p>
@@ -304,10 +316,18 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                     </div>
                 </div>
            </div>
-           <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600 text-4xl shadow-lg"><i className="fas fa-check"></i></div>
-           <h3 className="text-2xl font-black text-slate-800">Laporan Terkirim</h3>
-           <p className="text-slate-500 text-sm mt-2">Data tanggal <strong>{selectedDate}</strong> sudah tersimpan.</p>
-           <button onClick={() => setSubmitted(false)} className="mt-8 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-full font-bold text-sm shadow-md hover:bg-slate-50">Edit Laporan Ini</button>
+           
+           {/* Conditional Icon & Text based on isDraft */}
+           <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-lg ${isDraft ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
+               <i className={`fas ${isDraft ? 'fa-edit' : 'fa-check'}`}></i>
+           </div>
+           
+           <h3 className="text-2xl font-black text-slate-800">{isDraft ? 'Draft Tersimpan Sementara' : 'Laporan Terkirim'}</h3>
+           <p className="text-slate-500 text-sm mt-2">Data tanggal <strong>{selectedDate}</strong> {isDraft ? 'belum dikirim final.' : 'sudah tersimpan.'}</p>
+           
+           <button onClick={() => setSubmitted(false)} className="mt-8 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-full font-bold text-sm shadow-md hover:bg-slate-50">
+               {isDraft ? 'Lanjutkan Edit Laporan Ini' : 'Edit Laporan Ini'}
+           </button>
         </div>
      );
   }
@@ -750,13 +770,17 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
                                     </div>
                                     <div>
                                         <h4 className={`font-bold text-sm ${textClass}`}>{u.name}</h4>
-                                        {/* Jika Mode Kelas, tidak perlu sub-info kelas */}
-                                        {tab !== 'Kelas' && <p className="text-[10px] font-bold text-slate-400">{u.kelas || 'Umum'}</p>}
+                                        {/* Jika Mode Kelas, tampilkan detail partisipasi */}
+                                        {tab === 'Kelas' ? (
+                                            <p className="text-[10px] font-bold text-slate-400">Partisipasi: {u.details?.participation}% ({u.details?.totalStudents} siswa)</p>
+                                        ) : (
+                                            <p className="text-[10px] font-bold text-slate-400">{u.kelas || 'Umum'}</p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <span className="font-black text-lg text-primary-600">{u.points}</span>
-                                    <span className="text-[10px] text-slate-400 block -mt-1">Poin</span>
+                                    <span className="text-[10px] text-slate-400 block -mt-1">{tab === 'Kelas' ? 'Rerata' : 'Poin'}</span>
                                 </div>
                             </div>
                         );
@@ -768,162 +792,161 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
     );
 };
 
-// --- Tab Literasi (Mobile Optimized - Unmuted Manual Play) ---
-export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: string }) => {
-  const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
-  const [answers, setAnswers] = useState<string[]>([]);
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [date, setDate] = useState(initialDate || getWIBDate());
-  
-  // Video State
-  const [videoFinished, setVideoFinished] = useState(false);
-  const [videoStarted, setVideoStarted] = useState(false);
-  const [isPlayerReady, setIsPlayerReady] = useState(false);
-  const playerRef = useRef<any>(null);
+// --- Tab Literasi (New) ---
+export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: string }) => {
+    const [date, setDate] = useState(initialDate || getWIBDate());
+    const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
+    const [answers, setAnswers] = useState<string[]>([]);
+    const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(true);
+    
+    // Video State
+    const [videoFinished, setVideoFinished] = useState(false);
+    const [videoStarted, setVideoStarted] = useState(false);
+    const [isPlayerReady, setIsPlayerReady] = useState(false);
+    const playerRef = useRef<any>(null);
 
-  useEffect(() => {
-    if(initialDate) setDate(initialDate);
-  }, [initialDate]);
+    useEffect(() => {
+        if(initialDate) setDate(initialDate);
+    }, [initialDate]);
 
-  // Load Youtube API only once
-  useEffect(() => {
-      if (!window.YT) {
-          const tag = document.createElement('script');
-          tag.src = "https://www.youtube.com/iframe_api";
-          const firstScriptTag = document.getElementsByTagName('script')[0];
-          firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-      }
-  }, []);
+    // Load Youtube API only once
+    useEffect(() => {
+        if (!window.YT) {
+            const tag = document.createElement('script');
+            tag.src = "https://www.youtube.com/iframe_api";
+            const firstScriptTag = document.getElementsByTagName('script')[0];
+            firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        }
+    }, []);
 
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      // Reset video states on date change
-      setVideoFinished(false); 
-      setVideoStarted(false);
-      setIsPlayerReady(false);
+    useEffect(() => {
+        const init = async () => {
+            setLoading(true);
+            setVideoFinished(false); 
+            setVideoStarted(false);
+            setIsPlayerReady(false);
 
-      const mat = await SupabaseService.getLiterasiMaterial(date);
-      setMaterial(mat);
-      
-      const log = await SupabaseService.getDailyLog(user.id, date);
-      if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
-        setAnswers(log.details.literasiResponse);
-        setSubmitted(true);
-        // Jika sudah submit, anggap video sudah ditonton agar bisa edit
-        setVideoFinished(true);
-        setVideoStarted(true);
-        setIsPlayerReady(true);
-      } else {
-        setAnswers(new Array(mat.questions.length).fill(''));
-        setSubmitted(false);
-      }
-      setLoading(false);
-    };
-    init();
-  }, [user.id, date]);
+            const mat = await SupabaseService.getLiterasiMaterial(date);
+            setMaterial(mat);
+            
+            const log = await SupabaseService.getDailyLog(user.id, date);
+            if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
+                setAnswers(log.details.literasiResponse);
+                setSubmitted(true);
+                setVideoFinished(true);
+                setVideoStarted(true);
+                setIsPlayerReady(true);
+            } else {
+                setAnswers(new Array(mat.questions.length).fill(''));
+                setSubmitted(false);
+            }
+            setLoading(false);
+        };
+        init();
+    }, [user.id, date]);
 
-  // Initialize Player when material is loaded
-  useEffect(() => {
-      // Load player if not loaded OR if loaded but submitted (re-init to allow watch again if wanted, though unnecessary for edit)
-      if (!loading && material) {
-          const videoId = getVideoId(material.youtubeUrl);
+    // Initialize Player when material is loaded
+    useEffect(() => {
+        if (!loading && material) {
+            const videoId = getVideoId(material.youtubeUrl);
 
-          if (videoId) {
-              const initPlayer = () => {
-                 if (playerRef.current) {
-                    try { playerRef.current.destroy(); } catch(e) {}
-                 }
+            if (videoId) {
+                const initPlayer = () => {
+                    if (playerRef.current) {
+                        try { playerRef.current.destroy(); } catch(e) {}
+                    }
 
-                 playerRef.current = new window.YT.Player('youtube-player', {
-                    height: '100%',
-                    width: '100%',
-                    videoId: videoId,
-                    playerVars: {
-                        'autoplay': 0, // Disabled to prevent mobile browser blocks
-                        'controls': 1, // Allow controls for review
-                        'disablekb': 1,
-                        'fs': 0,
-                        'rel': 0,
-                        'modestbranding': 1,
-                        'playsinline': 1, // Crucial for iOS
-                        'mute': 0, // Unmuted
-                        'origin': window.location.origin 
-                    },
-                    events: {
-                        'onReady': () => {
-                            setIsPlayerReady(true);
+                    playerRef.current = new window.YT.Player('youtube-player', {
+                        height: '100%',
+                        width: '100%',
+                        videoId: videoId,
+                        playerVars: {
+                            'autoplay': 0, 
+                            'controls': 1, 
+                            'disablekb': 1,
+                            'fs': 0,
+                            'rel': 0,
+                            'modestbranding': 1,
+                            'playsinline': 1, 
+                            'mute': 0,
+                            'origin': window.location.origin 
                         },
-                        'onStateChange': (event: any) => {
-                            if (event.data === 1) { // Playing
-                                setVideoStarted(true);
-                            }
-                            if (event.data === 0) { // Ended
-                                setVideoFinished(true);
+                        events: {
+                            'onReady': () => {
+                                setIsPlayerReady(true);
+                            },
+                            'onStateChange': (event: any) => {
+                                if (event.data === 1) { // Playing
+                                    setVideoStarted(true);
+                                }
+                                if (event.data === 0) { // Ended
+                                    setVideoFinished(true);
+                                }
                             }
                         }
-                    }
-                 });
-              };
+                    });
+                };
 
-              if (window.YT && window.YT.Player) {
-                  initPlayer();
-              } else {
-                  // If API downloaded but not ready, define global callback
-                  window.onYouTubeIframeAPIReady = initPlayer;
-              }
-          }
-      }
-  }, [loading, material]);
+                if (window.YT && window.YT.Player) {
+                    initPlayer();
+                } else {
+                    window.onYouTubeIframeAPIReady = initPlayer;
+                }
+            }
+        }
+    }, [loading, material]);
 
-  const handleManualPlay = () => {
-      if(playerRef.current && playerRef.current.playVideo && isPlayerReady) {
-          playerRef.current.playVideo();
-          // Optimistic UI update
-          setVideoStarted(true); 
-      }
-  };
+    const handleManualPlay = () => {
+        if(playerRef.current && playerRef.current.playVideo && isPlayerReady) {
+            playerRef.current.playVideo();
+            setVideoStarted(true); 
+        }
+    };
 
-  const handleSave = async () => {
-     if (answers.some(a => !a.trim())) {
-        return Swal.fire('Belum Lengkap', 'Jawab semua pertanyaan ya.', 'warning');
-     }
-     Swal.fire({ title: 'Menyimpan...', didOpen: () => Swal.showLoading() });
-     const log = await SupabaseService.getDailyLog(user.id, date);
-     let details = log?.details || {};
-     details.literasiResponse = answers;
-     const payload: DailyLog = {
-         user_id: user.id, date: date,
-         puasa_type: log?.puasa_type || 'tidak', total_points: 0,
-         details: details as DailyLogDetails
-     };
-     const success = await SupabaseService.saveDailyLog(payload);
-     if(success) {
-        setSubmitted(true);
-        Swal.fire('Sukses', 'Jawaban Literasi berhasil disimpan!', 'success');
-     } else Swal.fire('Gagal', 'Terjadi kesalahan.', 'error');
-  };
+    const handleSave = async () => {
+        if (answers.some(a => !a.trim())) {
+            return Swal.fire('Belum Lengkap', 'Jawab semua pertanyaan ya.', 'warning');
+        }
+        Swal.fire({ title: 'Menyimpan...', didOpen: () => Swal.showLoading() });
+        const log = await SupabaseService.getDailyLog(user.id, date);
+        let details = log?.details || {};
+        details.literasiResponse = answers;
+        const payload: DailyLog = {
+            user_id: user.id, date: date,
+            puasa_type: log?.puasa_type || 'tidak', total_points: 0,
+            details: details as DailyLogDetails
+        };
+        const success = await SupabaseService.saveDailyLog(payload);
+        if(success) {
+            setSubmitted(true);
+            Swal.fire('Sukses', 'Jawaban Literasi berhasil disimpan!', 'success');
+        } else Swal.fire('Gagal', 'Terjadi kesalahan.', 'error');
+    };
 
-  if (loading) return <div className="p-10 text-center"><i className="fas fa-circle-notch fa-spin text-primary-500"></i></div>;
-  if (!material || !material.youtubeUrl) return <div className="p-10 text-center"><p className="text-slate-500">Belum ada materi literasi untuk tanggal {date}.</p></div>;
+    if (loading) return <div className="p-10 text-center"><i className="fas fa-circle-notch fa-spin text-primary-500"></i></div>;
+    if (!material || !material.youtubeUrl) return <div className="p-10 text-center"><p className="text-slate-500">Belum ada materi literasi untuk tanggal {date}.</p></div>;
 
-  return (
-      <div className="p-6 pb-28 animate-slide-up">
-           <div className="glass-card bg-gradient-to-r from-pink-500 to-rose-500 rounded-[32px] p-6 text-white mb-6 shadow-xl relative overflow-hidden">
-              <div className="relative z-10 flex justify-between items-center">
-                 <div>
-                    <h2 className="text-xl font-bold mb-1"><i className="fas fa-play-circle mr-2"></i>Literasi Ramadan</h2>
-                    <p className="text-xs opacity-90">Simak video sampai habis untuk menjawab</p>
+    return (
+        <div className="p-6 pb-28 animate-slide-up">
+            <div className="glass-card bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[32px] p-6 text-white mb-6 shadow-xl relative overflow-hidden">
+                <div className="relative z-10">
+                    <h2 className="text-2xl font-black mb-1">Literasi Ramadan</h2>
+                    <p className="text-xs opacity-90">Simak video & jawab pertanyaannya</p>
+                </div>
+            </div>
+
+            {/* Date Selector */}
+            <div className="glass-card p-2 rounded-[24px] mb-6 flex justify-between items-center shadow-sm">
+                 <div className="pl-4">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase">TANGGAL MATERI</p>
                  </div>
-                 <input type="date" className="bg-white/20 backdrop-blur-md text-white font-bold text-xs px-3 py-2 rounded-xl border border-white/30 outline-none" value={date} max={getWIBDate()} onChange={(e) => setDate(e.target.value)} />
-              </div>
-           </div>
+                 <input type="date" className="bg-slate-100 text-slate-700 font-bold text-xs px-3 py-2 rounded-xl border-none outline-none" value={date} max={getWIBDate()} onChange={(e) => setDate(e.target.value)} />
+            </div>
 
-           <div className="space-y-6">
+            <div className="space-y-6">
                <div className="glass-card p-2 rounded-[24px] relative overflow-hidden">
                    {/* Video Container */}
-                   {/* We remove the 'submitted' check blocking the video, user can rewatch if they want */}
                    <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black group">
                        <div id="youtube-player" className="w-full h-full"></div>
                        
@@ -948,7 +971,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
                            <div className="absolute inset-0 z-20 bg-transparent"></div>
                        )}
                        
-                       {/* Finished Overlay - Only show if just finished watching and not submitted yet, OR purely purely decorative if submitted */}
+                       {/* Finished Overlay */}
                        {videoFinished && !submitted && (
                            <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center text-white backdrop-blur-sm pointer-events-none">
                                <div className="text-center animate-slide-up">
@@ -999,98 +1022,72 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
                    </div>
                </div>
            </div>
-      </div>
-  );
-};
-
-export const TabMateri = () => {
-    const materials = [
-        { title: "Panduan Puasa Ramadan", desc: "Syarat, Rukun, dan Yang Membatalkan", url: "#", icon: "fa-book-open", color: "text-blue-500 bg-blue-100" },
-        { title: "Keutamaan Tarawih", desc: "Pahala salat malam di bulan Ramadan", url: "#", icon: "fa-moon", color: "text-purple-500 bg-purple-100" },
-        { title: "Zakat Fitrah", desc: "Ketentuan dan waktu pembayaran", url: "#", icon: "fa-hand-holding-heart", color: "text-green-500 bg-green-100" },
-        { title: "Lailatulqadar", desc: "Tanda-tanda dan amalan utama", url: "#", icon: "fa-star", color: "text-yellow-500 bg-yellow-100" },
-    ];
-
-    return (
-        <div className="p-6 pb-28 animate-slide-up">
-            <div className="glass-card bg-gradient-to-r from-teal-500 to-emerald-500 rounded-[32px] p-6 text-white mb-6 shadow-xl text-center relative overflow-hidden">
-                <i className="fas fa-book-reader text-6xl absolute -bottom-4 -right-4 opacity-20"></i>
-                <h2 className="text-xl font-bold mb-1">Materi Ramadan</h2>
-                <p className="text-xs opacity-90">Perkaya ilmu dan wawasanmu</p>
-            </div>
-
-            <div className="space-y-4">
-                {materials.map((m, i) => (
-                    <div key={i} className="glass-card p-4 rounded-[24px] flex items-center gap-4 hover:bg-slate-50 transition cursor-pointer shadow-sm border border-slate-100" onClick={() => Swal.fire('Info', 'Materi lengkap akan segera tersedia.', 'info')}>
-                        <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center text-xl shadow-sm ${m.color}`}>
-                            <i className={`fas ${m.icon}`}></i>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-slate-700 text-sm">{m.title}</h4>
-                            <p className="text-[10px] text-slate-400 font-bold">{m.desc}</p>
-                        </div>
-                        <div className="ml-auto text-slate-300">
-                            <i className="fas fa-chevron-right"></i>
-                        </div>
-                    </div>
-                ))}
-            </div>
-            
-            <div className="mt-8 p-6 bg-blue-50 rounded-[24px] text-center border border-blue-100">
-                <i className="fas fa-info-circle text-2xl text-blue-300 mb-2"></i>
-                <p className="text-xs text-blue-800 font-bold leading-relaxed">
-                    "Barang siapa menempuh jalan untuk mencari ilmu, maka Allah akan memudahkan baginya jalan menuju surga."
-                    <br/><span className="opacity-60 font-normal">(HR. Muslim)</span>
-                </p>
-            </div>
         </div>
     );
 };
 
+// --- Tab Materi (New) ---
+export const TabMateri = () => {
+    return (
+        <div className="p-6 pb-28 animate-slide-up">
+            <div className="glass-card bg-gradient-to-r from-teal-500 to-emerald-500 rounded-[32px] p-6 text-white mb-6 shadow-xl">
+                 <h2 className="text-xl font-bold">Materi Ramadan</h2>
+                 <p className="text-xs opacity-90">Kumpulan kultum & panduan ibadah</p>
+            </div>
+            {/* List of articles */}
+             <div className="space-y-4">
+                <div className="glass-card p-5 rounded-[24px] border-l-4 border-teal-500">
+                    <h3 className="font-bold text-slate-800 text-lg">Keutamaan Bulan Ramadan</h3>
+                    <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                        Bulan Ramadan adalah bulan yang penuh berkah, di mana pintu-pintu surga dibuka, pintu-pintu neraka ditutup, dan setan-setan dibelenggu. Di dalamnya terdapat satu malam yang lebih baik dari seribu bulan, yaitu Lailatulqadar.
+                    </p>
+                </div>
+                <div className="glass-card p-5 rounded-[24px] border-l-4 border-emerald-500">
+                    <h3 className="font-bold text-slate-800 text-lg">Syarat Wajib Puasa</h3>
+                    <ul className="text-sm text-slate-600 mt-2 list-disc list-inside leading-relaxed">
+                        <li>Beragama Islam</li>
+                        <li>Baligh (sudah dewasa)</li>
+                        <li>Berakal sehat</li>
+                        <li>Sehat jasmani dan rohani</li>
+                        <li>Bukan musafir (sedang dalam perjalanan jauh)</li>
+                        <li>Suci dari haid dan nifas (bagi wanita)</li>
+                    </ul>
+                </div>
+                <div className="glass-card p-5 rounded-[24px] border-l-4 border-cyan-500">
+                    <h3 className="font-bold text-slate-800 text-lg">Hal yang Membatalkan Puasa</h3>
+                    <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                        Makan dan minum dengan sengaja, muntah dengan sengaja, berhubungan suami istri, keluar air mani dengan sengaja, haid atau nifas, gila (hilang akal), dan murtad (keluar dari Islam).
+                    </p>
+                </div>
+             </div>
+        </div>
+    );
+};
+
+// --- Tab Profile (New) ---
 export const TabProfile = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
     return (
         <div className="p-6 pb-28 animate-slide-up">
-             <div className="glass-card bg-white p-6 rounded-[32px] shadow-xl text-center relative overflow-hidden mb-6 border border-slate-100">
-                 <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-primary-500 to-indigo-600 opacity-10"></div>
-                 <div className="relative z-10">
-                    <div className="w-24 h-24 bg-white rounded-full mx-auto flex items-center justify-center text-4xl text-primary-600 shadow-xl border-4 border-white mb-4">
-                        {user.name.charAt(0)}
-                    </div>
-                    <h2 className="text-xl font-black text-slate-800 mb-1">{user.name}</h2>
-                    <p className="text-xs font-bold text-white bg-primary-500 px-4 py-1.5 rounded-full inline-block mb-6 shadow-md shadow-primary-200">
-                        {user.role === 'murid' ? `Kelas ${user.kelas}` : user.role.toUpperCase()}
-                    </p>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-left">
-                        <div className="bg-slate-50 p-4 rounded-[20px] border border-slate-100">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">USERNAME</p>
-                            <p className="text-sm font-bold text-slate-700 truncate">{user.username}</p>
-                        </div>
-                        <div className="bg-slate-50 p-4 rounded-[20px] border border-slate-100">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">GENDER</p>
-                            <p className="text-sm font-bold text-slate-700">{user.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
-                        </div>
-                    </div>
+             <div className="glass-card p-6 rounded-[32px] text-center mb-6 relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-primary-50 to-transparent"></div>
+                 <div className="w-24 h-24 bg-white border-4 border-white shadow-xl text-primary-600 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl font-black relative z-10">
+                     {user.name.charAt(0)}
+                 </div>
+                 <h2 className="text-xl font-black text-slate-800 relative z-10">{user.name}</h2>
+                 <p className="text-sm text-slate-500 font-bold relative z-10 mb-1">{user.role === 'murid' ? `Kelas ${user.kelas || '-'}` : user.role.toUpperCase()}</p>
+                 <div className="inline-block px-3 py-1 bg-slate-100 rounded-full text-[10px] font-bold text-slate-400 relative z-10">
+                    {user.username}
                  </div>
              </div>
 
              <div className="space-y-3">
-                 <button onClick={() => Swal.fire('Tentang Aplikasi', 'Spansa Rama v2.1\nUPT SMPN 1 Pasuruan\nDeveloped by Tim IT', 'info')} className="w-full py-4 bg-white text-slate-600 font-bold rounded-[24px] border border-slate-200 hover:bg-slate-50 transition shadow-sm flex items-center justify-between px-6">
-                     <div className="flex items-center gap-3">
-                        <i className="fas fa-info-circle text-slate-400"></i>
-                        <span>Tentang Aplikasi</span>
-                     </div>
-                     <i className="fas fa-chevron-right text-slate-300 text-xs"></i>
+                 <button onClick={onLogout} className="w-full py-4 bg-red-50 text-red-600 font-bold rounded-[24px] border border-red-100 shadow-sm hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+                     <i className="fas fa-sign-out-alt"></i> Keluar Aplikasi
                  </button>
-                 
-                 <button onClick={onLogout} className="w-full py-4 bg-red-50 text-red-600 font-bold rounded-[24px] border border-red-100 hover:bg-red-100 transition shadow-sm flex items-center justify-center gap-2 mt-4">
-                     <i className="fas fa-sign-out-alt"></i> Keluar Akun
-                 </button>
-             </div>
-
-             <div className="mt-12 text-center opacity-30">
-                 <i className="fas fa-mosque text-4xl mb-2"></i>
-                 <p className="text-[10px] font-bold uppercase tracking-widest">Spansa Rama 2025</p>
+                 <div className="text-center mt-8">
+                     <p className="text-[10px] text-slate-400">Aplikasi Ramadan Digital Spansa</p>
+                     <p className="text-[10px] text-slate-300">Created with ❤️ by Tim IT</p>
+                 </div>
              </div>
         </div>
     );

@@ -58,6 +58,8 @@ export interface DailyLogDetails {
     belajarMapel?: string;
     belajarTopik?: string;
     literasiResponse?: string[];
+    
+    is_draft?: boolean; // NEW: To distinguish between saved draft and final submission
 }
 
 export interface DailyLog {

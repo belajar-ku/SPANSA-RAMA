@@ -183,7 +183,7 @@ export const SupabaseService = {
           const { data: logs, error: err2 } = await supabase.from('daily_logs').select('*').eq('date', date).in('user_id', students.map(s => s.id));
           if(err2) throw err2;
           
-          // 3. Merge & Sort (Submitted First)
+          // 3. Merge
           const result = students.map(s => {
               const log = logs?.find(l => l.user_id === s.id);
               return {
@@ -196,8 +196,12 @@ export const SupabaseService = {
               };
           });
 
-          // Sorting: Submitted (true) comes before Not Submitted (false)
-          return result.sort((a, b) => Number(b.submitted) - Number(a.submitted));
+          // UPDATE: Sorting by Points (Highest to Lowest) as requested
+          // Secondary sort: Submitted first
+          return result.sort((a, b) => {
+              if (b.points !== a.points) return b.points - a.points;
+              return Number(b.submitted) - Number(a.submitted);
+          });
 
       } catch(e) { console.error(e); return []; }
   },
@@ -267,36 +271,61 @@ export const SupabaseService = {
       } catch(e) { console.error(e); return []; }
   },
 
-  // [NEW] Leaderboard Antar Kelas
+  // [NEW] Leaderboard Antar Kelas with Average Logic (Updated)
   getClassLeaderboard: async () => {
       try {
           // 1. Get all students with class
           const { data: users, error: err1 } = await supabase.from('users').select('id, kelas').eq('role', 'murid').not('kelas', 'is', null);
           if (err1 || !users) return [];
 
+          // 2. Get all logs
           const userIds = users.map(u => u.id);
-          
-          // 2. Get all logs for these students
           const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
 
-          const classScores: Record<string, number> = {};
-          
-          // Initialize logic
+          // 3. Aggregate Data
+          const classStats: Record<string, { totalStudents: number, activeStudents: Set<string>, totalPoints: number }> = {};
+
+          // Init Classes and count students
           users.forEach(u => {
-              if(u.kelas && !classScores[u.kelas]) classScores[u.kelas] = 0;
+              if (!u.kelas) return;
+              if (!classStats[u.kelas]) {
+                  classStats[u.kelas] = { totalStudents: 0, activeStudents: new Set(), totalPoints: 0 };
+              }
+              classStats[u.kelas].totalStudents++;
           });
 
-          // Sum Points
+          // Sum points and track active students
           logs?.forEach(l => {
-             const u = users.find(user => user.id === l.user_id);
-             if (u && u.kelas) {
-                 classScores[u.kelas] = (classScores[u.kelas] || 0) + (l.total_points || 0);
-             }
+              const u = users.find(user => user.id === l.user_id);
+              if (u && u.kelas && classStats[u.kelas]) {
+                  classStats[u.kelas].totalPoints += (l.total_points || 0);
+                  // Mark student as active if they have a log entry
+                  classStats[u.kelas].activeStudents.add(l.user_id);
+              }
           });
 
-          return Object.entries(classScores)
-                .map(([className, points]) => ({ id: className, name: className, points, kelas: 'Kelas' }))
-                .sort((a, b) => b.points - a.points);
+          // 4. Calculate Weighted Score
+          // Rumus Rerata: Total Poin Kelas / Total Murid di Kelas
+          // Rumus Partisipasi: (Yang Mengisi / Total Murid) * 100
+          return Object.entries(classStats).map(([className, stats]) => {
+              const fillingCount = stats.activeStudents.size;
+              const participationPct = stats.totalStudents > 0 ? (fillingCount / stats.totalStudents) * 100 : 0;
+              
+              // Rata-rata Poin per Siswa (Seluruh Kelas)
+              const avgScorePerStudent = stats.totalStudents > 0 ? Math.round(stats.totalPoints / stats.totalStudents) : 0;
+              
+              return {
+                  id: className,
+                  name: className,
+                  points: avgScorePerStudent, // Score utama untuk sorting
+                  details: {
+                      participation: Math.round(participationPct),
+                      avgActive: avgScorePerStudent, // Disamakan agar konsisten
+                      totalStudents: stats.totalStudents
+                  }
+              };
+          }).sort((a, b) => b.points - a.points);
+
       } catch(e) { console.error(e); return []; }
   },
 
