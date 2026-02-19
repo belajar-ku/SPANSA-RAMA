@@ -37,6 +37,18 @@ export const TabMateri = () => {
         fetchP();
     }, [date]);
 
+    // Helper: Calculate Duha (Sunrise + 20 mins)
+    const getDuhaTime = (sunrise: string) => {
+        if (!sunrise) return '-';
+        try {
+            const [h, m] = sunrise.split(':').map(Number);
+            const d = new Date();
+            d.setHours(h);
+            d.setMinutes(m + 20);
+            return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
+        } catch { return '-'; }
+    };
+
     return (
         <div className="p-6 pb-28 animate-slide-up relative">
             {/* Jadwal Sholat Widget */}
@@ -53,11 +65,26 @@ export const TabMateri = () => {
                     </div>
                     
                     {loading ? <div className="text-center text-xs opacity-70">Memuat...</div> : prayerTimes ? (
-                        <div className="grid grid-cols-5 gap-2 text-center" id="prayer-times-container">
+                        <div className="grid grid-cols-4 gap-2 text-center" id="prayer-times-container">
+                            {/* Row 1: Imsak, Subuh, Terbit, Duha */}
+                            <div className="bg-white/10 rounded-lg p-2">
+                                <div className="text-[10px] text-emerald-200">Imsak</div>
+                                <div className="font-bold text-sm">{prayerTimes.Imsak}</div>
+                            </div>
                             <div className="bg-white/10 rounded-lg p-2">
                                 <div className="text-[10px] text-emerald-200">Subuh</div>
                                 <div className="font-bold text-sm">{prayerTimes.Fajr}</div>
                             </div>
+                            <div className="bg-white/10 rounded-lg p-2">
+                                <div className="text-[10px] text-emerald-200">Terbit</div>
+                                <div className="font-bold text-sm">{prayerTimes.Sunrise}</div>
+                            </div>
+                            <div className="bg-white/10 rounded-lg p-2">
+                                <div className="text-[10px] text-emerald-200">Duha</div>
+                                <div className="font-bold text-sm">{getDuhaTime(prayerTimes.Sunrise)}</div>
+                            </div>
+
+                            {/* Row 2: Dzuhur, Ashar, Maghrib, Isya */}
                             <div className="bg-white/10 rounded-lg p-2">
                                 <div className="text-[10px] text-emerald-200">Dzuhur</div>
                                 <div className="font-bold text-sm">{prayerTimes.Dhuhr}</div>

@@ -5,18 +5,44 @@ import { User, DailyLog, DailyLogDetails, RAMADAN_QUOTES, getWIBDate } from './t
 import { toTitleCase } from './App';
 
 const SURAH_LIST = [
-  "Al-Fatihah", "Al-Baqarah", "Ali 'Imran", "An-Nisa'", "Al-Ma'idah", "Al-An'am", "Al-A'raf", "Al-Anfal", "At-Taubah", "Yunus",
-  "Hud", "Yusuf", "Ar-Ra'd", "Ibrahim", "Al-Hijr", "An-Nahl", "Al-Isra'", "Al-Kahf", "Maryam", "Ta-Ha",
-  "Al-Anbiya'", "Al-Hajj", "Al-Mu'minun", "An-Nur", "Al-Furqan", "Asy-Syu'ara'", "An-Naml", "Al-Qasas", "Al-'Ankabut", "Ar-Rum",
-  "Luqman", "As-Sajdah", "Al-Ahzab", "Saba'", "Fatir", "Ya-Sin", "As-Saffat", "Sad", "Az-Zumar", "Ghafir",
-  "Fussilat", "Asy-Syura", "Az-Zukhruf", "Ad-Dukhan", "Al-Jasiyah", "Al-Ahqaf", "Muhammad", "Al-Fath", "Al-Hujurat", "Qaf",
-  "Az-Zariyat", "At-Tur", "An-Najm", "Al-Qamar", "Ar-Rahman", "Al-Waqi'ah", "Al-Hadid", "Al-Mujadilah", "Al-Hasyr", "Al-Mumtahanah",
-  "As-Saff", "Al-Jumu'ah", "Al-Munafiqun", "At-Tagabun", "At-Talaq", "At-Tahrim", "Al-Mulk", "Al-Qalam", "Al-Haqqah", "Al-Ma'arij",
-  "Nuh", "Al-Jinn", "Al-Muzzammil", "Al-Muddassir", "Al-Qiyamah", "Al-Insan", "Al-Mursalat", "An-Naba'", "An-Nazi'at", "'Abasa",
-  "At-Takwir", "Al-Infitar", "Al-Mutaffifin", "Al-Insyiqaq", "Al-Buruj", "At-Tariq", "Al-A'la", "Al-Ghasyiyah", "Al-Fajar", "Al-Balad",
-  "Asy-Syams", "Al-Lail", "Ad-Duha", "Al-Insyirah", "At-Tin", "Al-'Alaq", "Al-Qadr", "Al-Bayyinah", "Az-Zalzalah", "Al-'Adiyat",
-  "Al-Qari'ah", "At-Takasur", "Al-'Asr", "Al-Humazah", "Al-Fil", "Quraisy", "Al-Ma'un", "Al-Kausar", "Al-Kafirun", "An-Nasr",
-  "Al-Lahab", "Al-Ikhlas", "Al-Falaq", "An-Nas"
+  { name: "Al-Fatihah", count: 7 }, { name: "Al-Baqarah", count: 286 }, { name: "Ali 'Imran", count: 200 },
+  { name: "An-Nisa'", count: 176 }, { name: "Al-Ma'idah", count: 120 }, { name: "Al-An'am", count: 165 },
+  { name: "Al-A'raf", count: 206 }, { name: "Al-Anfal", count: 75 }, { name: "At-Taubah", count: 129 },
+  { name: "Yunus", count: 109 }, { name: "Hud", count: 123 }, { name: "Yusuf", count: 111 },
+  { name: "Ar-Ra'd", count: 43 }, { name: "Ibrahim", count: 52 }, { name: "Al-Hijr", count: 99 },
+  { name: "An-Nahl", count: 128 }, { name: "Al-Isra'", count: 111 }, { name: "Al-Kahf", count: 110 },
+  { name: "Maryam", count: 98 }, { name: "Ta-Ha", count: 135 }, { name: "Al-Anbiya'", count: 112 },
+  { name: "Al-Hajj", count: 78 }, { name: "Al-Mu'minun", count: 118 }, { name: "An-Nur", count: 64 },
+  { name: "Al-Furqan", count: 77 }, { name: "Asy-Syu'ara'", count: 227 }, { name: "An-Naml", count: 93 },
+  { name: "Al-Qasas", count: 88 }, { name: "Al-'Ankabut", count: 69 }, { name: "Ar-Rum", count: 60 },
+  { name: "Luqman", count: 34 }, { name: "As-Sajdah", count: 30 }, { name: "Al-Ahzab", count: 73 },
+  { name: "Saba'", count: 54 }, { name: "Fatir", count: 45 }, { name: "Ya-Sin", count: 83 },
+  { name: "As-Saffat", count: 182 }, { name: "Sad", count: 88 }, { name: "Az-Zumar", count: 75 },
+  { name: "Ghafir", count: 85 }, { name: "Fussilat", count: 54 }, { name: "Asy-Syura", count: 53 },
+  { name: "Az-Zukhruf", count: 89 }, { name: "Ad-Dukhan", count: 59 }, { name: "Al-Jasiyah", count: 37 },
+  { name: "Al-Ahqaf", count: 35 }, { name: "Muhammad", count: 38 }, { name: "Al-Fath", count: 29 },
+  { name: "Al-Hujurat", count: 18 }, { name: "Qaf", count: 45 }, { name: "Az-Zariyat", count: 60 },
+  { name: "At-Tur", count: 49 }, { name: "An-Najm", count: 62 }, { name: "Al-Qamar", count: 55 },
+  { name: "Ar-Rahman", count: 78 }, { name: "Al-Waqi'ah", count: 96 }, { name: "Al-Hadid", count: 29 },
+  { name: "Al-Mujadilah", count: 22 }, { name: "Al-Hasyr", count: 24 }, { name: "Al-Mumtahanah", count: 13 },
+  { name: "As-Saff", count: 14 }, { name: "Al-Jumu'ah", count: 11 }, { name: "Al-Munafiqun", count: 11 },
+  { name: "At-Tagabun", count: 18 }, { name: "At-Talaq", count: 12 }, { name: "At-Tahrim", count: 12 },
+  { name: "Al-Mulk", count: 30 }, { name: "Al-Qalam", count: 52 }, { name: "Al-Haqqah", count: 52 },
+  { name: "Al-Ma'arij", count: 44 }, { name: "Nuh", count: 28 }, { name: "Al-Jinn", count: 28 },
+  { name: "Al-Muzzammil", count: 20 }, { name: "Al-Muddassir", count: 56 }, { name: "Al-Qiyamah", count: 40 },
+  { name: "Al-Insan", count: 31 }, { name: "Al-Mursalat", count: 50 }, { name: "An-Naba'", count: 40 },
+  { name: "An-Nazi'at", count: 46 }, { name: "'Abasa", count: 42 }, { name: "At-Takwir", count: 29 },
+  { name: "Al-Infitar", count: 19 }, { name: "Al-Mutaffifin", count: 36 }, { name: "Al-Insyiqaq", count: 25 },
+  { name: "Al-Buruj", count: 22 }, { name: "At-Tariq", count: 17 }, { name: "Al-A'la", count: 19 },
+  { name: "Al-Ghasyiyah", count: 26 }, { name: "Al-Fajar", count: 30 }, { name: "Al-Balad", count: 20 },
+  { name: "Asy-Syams", count: 15 }, { name: "Al-Lail", count: 21 }, { name: "Ad-Duha", count: 11 },
+  { name: "Al-Insyirah", count: 8 }, { name: "At-Tin", count: 8 }, { name: "Al-'Alaq", count: 19 },
+  { name: "Al-Qadr", count: 5 }, { name: "Al-Bayyinah", count: 8 }, { name: "Az-Zalzalah", count: 8 },
+  { name: "Al-'Adiyat", count: 11 }, { name: "Al-Qari'ah", count: 11 }, { name: "At-Takasur", count: 8 },
+  { name: "Al-'Asr", count: 3 }, { name: "Al-Humazah", count: 9 }, { name: "Al-Fil", count: 5 },
+  { name: "Quraisy", count: 4 }, { name: "Al-Ma'un", count: 7 }, { name: "Al-Kausar", count: 3 },
+  { name: "Al-Kafirun", count: 6 }, { name: "An-Nasr", count: 3 }, { name: "Al-Lahab", count: 5 },
+  { name: "Al-Ikhlas", count: 4 }, { name: "Al-Falaq", count: 5 }, { name: "An-Nas", count: 6 }
 ];
 
 export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: string }) => {
@@ -56,6 +82,10 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
 
   const [loading, setLoading] = useState(true);
   const [currentDay, setCurrentDay] = useState(1);
+
+  // Calculate Max Ayat based on selected surah
+  const currentSurahData = SURAH_LIST.find(s => s.name === tadarusSurah);
+  const maxAyat = currentSurahData ? currentSurahData.count : 286;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -289,16 +319,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
 
   return (
     <div className="p-6 pb-28 animate-slide-up">
-       <div className="glass-card bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[32px] p-6 text-white mb-6 shadow-2xl relative overflow-hidden">
-          <div className="relative z-10">
-             <div className="flex items-center gap-2 mb-2 opacity-80">
-                <i className="fas fa-bolt text-yellow-300"></i>
-                <span className="text-xs font-bold tracking-widest uppercase">Spirit Gen-Z • Hari ke-{currentDay}</span>
-             </div>
-             <p className="text-lg font-bold leading-relaxed">"{currentQuote}"</p>
-          </div>
-       </div>
-
+       {/* Widget Jam & Tanggal - MOVED UP */}
        <div className="glass-card p-1.5 rounded-[32px] mb-6 shadow-lg">
             <div className="bg-white rounded-[28px] p-4 flex justify-between items-center border border-slate-100">
                 <div>
@@ -314,6 +335,17 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
             </div>
             {isPreRamadan && <div className="bg-blue-50 text-blue-600 text-[10px] font-bold text-center py-1 rounded-b-[20px]"><i className="fas fa-info-circle mr-1"></i> Pra-Ramadan (Latihan)</div>}
             {!isPreRamadan && selectedDate !== getWIBDate() && <div className="bg-orange-50 text-orange-600 text-[10px] font-bold text-center py-1 rounded-b-[20px]"><i className="fas fa-history mr-1"></i> Anda mengisi laporan lampau</div>}
+       </div>
+
+       {/* Widget Header Spirit Gen-Z - MOVED DOWN */}
+       <div className="glass-card bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[32px] p-6 text-white mb-6 shadow-2xl relative overflow-hidden">
+          <div className="relative z-10">
+             <div className="flex items-center gap-2 mb-2 opacity-80">
+                <i className="fas fa-bolt text-yellow-300"></i>
+                <span className="text-xs font-bold tracking-widest uppercase">Spirit Gen-Z • Hari ke-{currentDay}</span>
+             </div>
+             <p className="text-lg font-bold leading-relaxed">"{currentQuote}"</p>
+          </div>
        </div>
 
        {classRank && (
@@ -469,20 +501,48 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                      {tadarusStatus === 'Ya' && (
                          <div className="animate-slide-up space-y-2 p-3 bg-teal-50 rounded-xl border border-teal-100">
                              <label className="text-[10px] font-bold text-teal-600 uppercase block">Nama Surah</label>
-                             <select className="w-full p-2.5 bg-white border border-teal-200 rounded-lg text-sm font-bold text-slate-700 outline-none" value={tadarusSurah} onChange={(e) => setTadarusSurah(e.target.value)}>
+                             <select className="w-full p-2.5 bg-white border border-teal-200 rounded-lg text-sm font-bold text-slate-700 outline-none" value={tadarusSurah} onChange={(e) => { setTadarusSurah(e.target.value); setTadarusAyatStart('1'); setTadarusAyatEnd(''); }}>
                                  <option value="" disabled hidden>-- Pilih Surah --</option>
                                  {SURAH_LIST.map((s, idx) => (
-                                     <option key={idx} value={s}>{idx + 1}. {s}</option>
+                                     <option key={idx} value={s.name}>{idx + 1}. {s.name}</option>
                                  ))}
                              </select>
                              <div className="grid grid-cols-2 gap-2 mt-2">
                                  <div>
                                      <label className="text-[10px] font-bold text-teal-600 uppercase block mb-1">Dari Ayat</label>
-                                     <input type="number" className="w-full p-2 bg-white border border-teal-200 rounded-lg text-sm font-bold outline-none placeholder:text-teal-200" placeholder="1" value={tadarusAyatStart} onChange={(e) => setTadarusAyatStart(e.target.value)} />
+                                     <input 
+                                        type="number" 
+                                        min="1" 
+                                        max={maxAyat}
+                                        className="w-full p-2 bg-white border border-teal-200 rounded-lg text-sm font-bold outline-none placeholder:text-teal-200" 
+                                        placeholder="1" 
+                                        value={tadarusAyatStart} 
+                                        onChange={(e) => {
+                                            let val = parseInt(e.target.value);
+                                            if (val < 1) val = 1;
+                                            if (val > maxAyat) val = maxAyat;
+                                            setTadarusAyatStart(isNaN(val) ? '' : val.toString());
+                                        }} 
+                                     />
                                  </div>
                                  <div>
                                      <label className="text-[10px] font-bold text-teal-600 uppercase block mb-1">Sampai Ayat</label>
-                                     <input type="number" className="w-full p-2 bg-white border border-teal-200 rounded-lg text-sm font-bold outline-none placeholder:text-teal-200" placeholder="10" value={tadarusAyatEnd} onChange={(e) => setTadarusAyatEnd(e.target.value)} />
+                                     <div className="relative">
+                                         <input 
+                                            type="number" 
+                                            min="1" 
+                                            max={maxAyat}
+                                            className="w-full p-2 bg-white border border-teal-200 rounded-lg text-sm font-bold outline-none placeholder:text-teal-200" 
+                                            placeholder={maxAyat.toString()} 
+                                            value={tadarusAyatEnd} 
+                                            onChange={(e) => {
+                                                let val = parseInt(e.target.value);
+                                                if (val > maxAyat) val = maxAyat;
+                                                setTadarusAyatEnd(isNaN(val) ? '' : val.toString());
+                                            }} 
+                                         />
+                                         {tadarusSurah && <span className="absolute right-2 top-2.5 text-[10px] text-teal-400 font-bold">/ {maxAyat}</span>}
+                                     </div>
                                  </div>
                              </div>
                          </div>

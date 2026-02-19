@@ -27,11 +27,11 @@ export const TabLeaderboard = ({ user }: { user: User }) => {
             <div className="glass-card bg-gradient-to-r from-yellow-400 to-orange-500 rounded-[24px] p-6 text-white mb-6 shadow-xl text-center relative overflow-hidden">
                 <i className="fas fa-trophy text-5xl mb-2 opacity-80 animate-bounce"></i>
                 <h2 className="text-2xl font-black">Papan Juara</h2>
-                <p className="text-xs font-bold opacity-90">{activeTab === 'siswa' ? (user.gender === 'L' ? 'Siswa Putra Terbaik' : 'Siswa Putri Terbaik') : 'Kelas Paling Aktif'}</p>
+                <p className="text-xs font-bold opacity-90">{activeTab === 'siswa' ? (user.gender === 'L' ? 'Murid Putra Terbaik' : 'Murid Putri Terbaik') : 'Kelas Paling Aktif'}</p>
             </div>
 
             <div className="flex bg-white p-1 rounded-2xl mb-6 shadow-sm border border-slate-100">
-                <button onClick={() => setActiveTab('siswa')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'siswa' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>Siswa</button>
+                <button onClick={() => setActiveTab('siswa')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'siswa' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>Murid</button>
                 <button onClick={() => setActiveTab('kelas')} className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'kelas' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}>Kelas</button>
             </div>
 
