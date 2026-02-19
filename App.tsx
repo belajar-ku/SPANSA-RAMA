@@ -3,7 +3,12 @@ import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
 import { LoginPage } from './LoginPage';
 import { User, Tab, APP_LOGO_URL, RamadanTarget, getWIBDate, DailyLog } from './types';
-import { TabHarian, TabLiterasi, TabMateri, TabProfile, TabLeaderboard, TabProgress } from './StudentTabs';
+import { TabHarian } from './StudentTabHarian';
+import { TabLiterasi } from './StudentTabLiterasi';
+import { TabMateri } from './StudentTabMateri';
+import { TabProfile } from './StudentTabProfile';
+import { TabLeaderboard } from './StudentTabLeaderboard';
+import { TabProgress } from './StudentTabProgress';
 import { TabAdminUsers, TabAdminData, TabMonitoring, TabKoreksiLiterasi } from './AdminTabs';
 
 // --- Helper: Title Case (EYD) ---
