@@ -44,6 +44,9 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const [currentTime, setCurrentTime] = useState(new Date());
   const [targetStartDate, setTargetStartDate] = useState('');
   
+  // Class Rank State for Student
+  const [classRank, setClassRank] = useState<any>(null);
+  
   // Prayer Times State
   const [prayerTimes, setPrayerTimes] = useState<any>(null);
 
@@ -143,9 +146,20 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
      setSedekahDiri(''); setSedekahRumah(''); setSedekahMasyarakat('');
      setBelajarMapel(''); setBelajarTopik('');
 
+     // Fetch Prayer Times
      SupabaseService.getPrayerSchedule(selectedDate).then(pt => {
         setPrayerTimes(pt);
      });
+
+     // Fetch Class Leaderboard for Widget
+     if (user.kelas) {
+         SupabaseService.getClassLeaderboard().then(leaderboard => {
+            const myRankIndex = leaderboard.findIndex((l: any) => l.id === user.kelas);
+            if (myRankIndex !== -1) {
+                setClassRank({ ...leaderboard[myRankIndex], rank: myRankIndex + 1, totalClasses: leaderboard.length });
+            }
+         });
+     }
 
      SupabaseService.getDailyLog(user.id, selectedDate).then(data => {
          if (data) {
@@ -203,7 +217,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
             setCurrentDay(diff >= 0 ? diff + 1 : 1);
         }
      });
-  }, [user.id, selectedDate]);
+  }, [user.id, selectedDate, user.kelas]);
 
   const quoteIndex = (currentDay - 1) % RAMADAN_QUOTES.length;
   const currentQuote = RAMADAN_QUOTES[quoteIndex >= 0 ? quoteIndex : 0];
@@ -369,6 +383,25 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                 </div>
             )}
        </div>
+
+       {/* WIDGET PERFORMA KELAS (NEW REQUEST) */}
+       {classRank && (
+            <div className="glass-card bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[24px] p-6 text-white mb-6 shadow-xl relative overflow-hidden animate-slide-up">
+                <div className="relative z-10 flex justify-between items-center">
+                    <div>
+                        <p className="text-[10px] font-bold text-purple-200 uppercase tracking-widest mb-1">KELAS {user.kelas}</p>
+                        <h2 className="text-3xl font-black mb-1">Peringkat {classRank.rank}</h2>
+                        <p className="text-xs opacity-90 font-bold">Dari {classRank.totalClasses} Kelas</p>
+                    </div>
+                    <div className="text-right">
+                        <div className="bg-white/20 backdrop-blur-md rounded-2xl p-3 text-center border border-white/30">
+                            <span className="block text-2xl font-black">{classRank.points}</span>
+                            <span className="text-[8px] font-bold uppercase opacity-80">Total Poin</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+       )}
 
        {/* Form Sections */}
        <div className="space-y-5">

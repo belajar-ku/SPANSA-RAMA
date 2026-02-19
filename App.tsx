@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
 import { LoginPage } from './LoginPage';
-import { User, Tab, APP_LOGO_URL, RamadanTarget, getWIBDate } from './types';
+import { User, Tab, APP_LOGO_URL, RamadanTarget, getWIBDate, DailyLog } from './types';
 import { TabHarian, TabLiterasi, TabMateri, TabProfile, TabLeaderboard, TabProgress } from './StudentTabs';
 import { TabAdminUsers, TabAdminData, TabMonitoring, TabKoreksiLiterasi } from './AdminTabs';
 
@@ -34,6 +34,90 @@ const Header = ({ user, activeTab }: { user: User, activeTab: string }) => (
       </div>
     </div>
   );
+
+// --- Today Target Modal (NEW) ---
+const TodayTargetModal = ({ user, onClose }: { user: User, onClose: () => void }) => {
+    const [log, setLog] = useState<DailyLog | null>(null);
+    const [loading, setLoading] = useState(true);
+    const date = getWIBDate();
+
+    useEffect(() => {
+        const fetchLog = async () => {
+            const data = await SupabaseService.getDailyLog(user.id, date);
+            setLog(data);
+            setLoading(false);
+        };
+        fetchLog();
+    }, [user.id, date]);
+
+    if (loading) return null;
+
+    // Logic Status
+    const literasiDone = log?.details?.literasiResponse && log.details.literasiResponse.length > 0;
+    
+    // Harian Status: 
+    // - Check (Submitted Final)
+    // - Draft (Is Draft)
+    // - Cross (Not exists)
+    let harianStatus: 'done' | 'draft' | 'none' = 'none';
+    if (log) {
+        if (log.details.is_draft) harianStatus = 'draft';
+        else harianStatus = 'done';
+    }
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md animate-slide-up">
+            <div className="bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl relative">
+                <div className="text-center mb-6">
+                    <h3 className="text-2xl font-black text-slate-800">Target Hari Ini</h3>
+                    <p className="text-xs text-slate-500 font-bold mt-1">{date}</p>
+                </div>
+
+                <div className="space-y-4 mb-8">
+                    {/* Literasi Item */}
+                    <div className={`p-4 rounded-2xl border-2 flex items-center justify-between ${literasiDone ? 'bg-blue-50 border-blue-100' : 'bg-slate-50 border-slate-100'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${literasiDone ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-400'}`}>
+                                <i className="fas fa-book-open"></i>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-slate-700 text-sm">Aktivitas Literasi</h4>
+                                <p className="text-[10px] text-slate-400 font-bold">{literasiDone ? 'Sudah Dikerjakan' : 'Belum Dikerjakan'}</p>
+                            </div>
+                        </div>
+                        <div className="text-xl">
+                            {literasiDone ? <i className="fas fa-check-circle text-blue-500"></i> : <i className="fas fa-times-circle text-red-300"></i>}
+                        </div>
+                    </div>
+
+                    {/* Harian Item */}
+                    <div className={`p-4 rounded-2xl border-2 flex items-center justify-between ${harianStatus === 'done' ? 'bg-emerald-50 border-emerald-100' : (harianStatus === 'draft' ? 'bg-yellow-50 border-yellow-100' : 'bg-slate-50 border-slate-100')}`}>
+                         <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${harianStatus === 'done' ? 'bg-emerald-100 text-emerald-600' : (harianStatus === 'draft' ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-200 text-slate-400')}`}>
+                                <i className="fas fa-praying-hands"></i>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-slate-700 text-sm">Aktivitas Harian</h4>
+                                <p className="text-[10px] text-slate-400 font-bold">
+                                    {harianStatus === 'done' ? 'Laporan Terkirim' : (harianStatus === 'draft' ? 'Tersimpan (Draft)' : 'Belum Mengisi')}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="text-xs font-bold">
+                            {harianStatus === 'done' && <i className="fas fa-check-circle text-emerald-500 text-xl"></i>}
+                            {harianStatus === 'draft' && <span className="bg-yellow-200 text-yellow-700 px-2 py-1 rounded-lg">DRAFT</span>}
+                            {harianStatus === 'none' && <i className="fas fa-times-circle text-red-300 text-xl"></i>}
+                        </div>
+                    </div>
+                </div>
+
+                <button onClick={onClose} className="w-full py-4 bg-slate-800 text-white font-bold rounded-2xl shadow-lg hover:bg-slate-700 transition-transform active:scale-95">
+                    Tutup & Lanjutkan
+                </button>
+            </div>
+        </div>
+    );
+};
 
 // --- Target Modal ---
 const TargetModal = ({ user, onClose, initialData }: { user: User, onClose: () => void, initialData: RamadanTarget | null }) => {
@@ -130,22 +214,26 @@ const TargetModal = ({ user, onClose, initialData }: { user: User, onClose: () =
                                 <div className="animate-slide-up pt-4">
                                     <h3 className="text-xl font-black text-center mb-6">Mulai Puasa</h3>
                                     <div className="space-y-4 mb-8">
-                                        {settings.startRamadhanV1 && (
+                                        {/* REMOVED MANUAL INPUT AS REQUESTED */}
+                                        {settings.startRamadhanV1 ? (
                                             <button onClick={() => setFormData({...formData, startDate: settings.startRamadhanV1})} className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${formData.startDate === settings.startRamadhanV1 ? 'border-primary-500 bg-primary-50 shadow-md' : 'border-slate-100 hover:bg-slate-50'}`}>
                                                 <p className="text-[10px] text-slate-400 font-bold uppercase">Pilihan 1</p>
                                                 <p className="font-black text-base">{settings.startRamadhanV1}</p>
                                             </button>
+                                        ) : (
+                                            <div className="text-center text-xs text-slate-400 bg-slate-100 p-2 rounded-xl">Menunggu Admin mengatur Pilihan 1</div>
                                         )}
-                                        {settings.startRamadhanV2 && (
+                                        
+                                        {settings.startRamadhanV2 ? (
                                             <button onClick={() => setFormData({...formData, startDate: settings.startRamadhanV2})} className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${formData.startDate === settings.startRamadhanV2 ? 'border-primary-500 bg-primary-50 shadow-md' : 'border-slate-100 hover:bg-slate-50'}`}>
                                                 <p className="text-[10px] text-slate-400 font-bold uppercase">Pilihan 2</p>
                                                 <p className="font-black text-base">{settings.startRamadhanV2}</p>
                                             </button>
+                                        ) : (
+                                            <div className="text-center text-xs text-slate-400 bg-slate-100 p-2 rounded-xl">Menunggu Admin mengatur Pilihan 2</div>
                                         )}
-                                        <div className="text-center text-xs text-slate-400 font-bold py-1">- atau manual -</div>
-                                        <input type="date" className="w-full p-4 bg-slate-100 rounded-2xl text-base font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary-200" value={formData.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} />
                                     </div>
-                                    <button onClick={() => { if(formData.startDate) setStep(2); else Swal.fire('Pilih Tanggal', '', 'warning'); }} className="w-full py-4 bg-primary-600 text-white font-bold text-base rounded-2xl shadow-lg">Lanjut <i className="fas fa-arrow-right ml-2"></i></button>
+                                    <button onClick={() => { if(formData.startDate) setStep(2); else Swal.fire('Pilih Tanggal', 'Silakan pilih tanggal mulai puasa yang tersedia.', 'warning'); }} className="w-full py-4 bg-primary-600 text-white font-bold text-base rounded-2xl shadow-lg">Lanjut <i className="fas fa-arrow-right ml-2"></i></button>
                                 </div>
                             )}
 
@@ -201,6 +289,7 @@ const App = () => {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('harian');
   const [showTargetModal, setShowTargetModal] = useState(false);
+  const [showTodayModal, setShowTodayModal] = useState(false); // NEW STATE for Today Modal
   const [targetData, setTargetData] = useState<RamadanTarget | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDateForEdit, setSelectedDateForEdit] = useState(getWIBDate());
@@ -211,6 +300,13 @@ const App = () => {
       setTargetData(t);
       // Always show modal on login/load so they can see/edit
       setShowTargetModal(true); 
+  };
+
+  // Trigger when closing Target Modal: Open Today Modal
+  const handleCloseTargetModal = () => {
+      setShowTargetModal(false);
+      // After closing target modal, show today's target check
+      setShowTodayModal(true);
   };
 
   useEffect(() => {
@@ -324,7 +420,8 @@ const App = () => {
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-32">
         <Header user={user} activeTab={activeTab} />
-        {showTargetModal && <TargetModal user={user} onClose={() => setShowTargetModal(false)} initialData={targetData} />}
+        {showTargetModal && <TargetModal user={user} onClose={handleCloseTargetModal} initialData={targetData} />}
+        {showTodayModal && <TodayTargetModal user={user} onClose={() => setShowTodayModal(false)} />}
 
         <main className="max-w-md mx-auto relative z-10">
             {activeTab === 'harian' && <TabHarian user={user} initialDate={selectedDateForEdit} />}

@@ -272,7 +272,7 @@ export const SupabaseService = {
   },
 
   // [NEW] Leaderboard Antar Kelas: TOTAL POIN AKUMULASI
-  // Fixing 0 Points issue: Corrected Date Range to 2025 and increased query limit
+  // Fixing 0 Points issue: Corrected Date Range to 2025 to include testing data
   getClassLeaderboard: async () => {
       try {
           // 1. Get all students with class
@@ -293,9 +293,7 @@ export const SupabaseService = {
           });
 
           // 3. Get all logs and Aggregate
-          // Menggunakan tahun 2025 karena kemungkinan besar typo dari user (2026).
-          // Jika user benar-benar di tahun 2026, getWIBDate() akan mengembalikan 2026 dan logic ini tetap jalan.
-          // Tetapi jika user di 2025 dan start date 2026, data akan 0. Jadi kita set start date 2025 agar aman.
+          // MENGGUNAKAN 2025 AGAR DATA TES HARI INI MUNCUL (Jika setting 2026, data hari ini tidak muncul)
           const START_DATE = '2025-02-18'; 
           const END_DATE = getWIBDate();
 
