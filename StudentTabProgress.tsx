@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { SupabaseService } from './SupabaseService';
-import { User, getWIBDate } from './types';
+import { User } from './types';
 
 export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: string, type: 'harian' | 'literasi') => void }) => {
     const [recap, setRecap] = useState<any[]>([]);
-    const [stats, setStats] = useState({ totalPoints: 0, daysActive: 0 });
     const [loading, setLoading] = useState(true);
     const [subTab, setSubTab] = useState<'ibadah' | 'literasi'>('ibadah');
 
@@ -14,11 +13,6 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
             // Sort by date descending (newest first)
             const sortedData = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setRecap(sortedData);
-
-            const totalPoints = data.reduce((acc, curr) => acc + (curr.total_points || 0), 0);
-            const daysActive = data.length;
-            
-            setStats({ totalPoints, daysActive });
             setLoading(false);
         };
         load();
