@@ -35,6 +35,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
         if(initialDate) setDate(initialDate);
     }, [initialDate]);
 
+    // Load Youtube API only once
     useEffect(() => {
         if (!window.YT) {
             const tag = document.createElement('script');
@@ -70,6 +71,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
         init();
     }, [user.id, date]);
 
+    // Initialize Player when material is loaded
     useEffect(() => {
         if (!loading && material) {
             const videoId = getVideoId(material.youtubeUrl);
@@ -85,14 +87,14 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                         width: '100%',
                         videoId: videoId,
                         playerVars: {
-                            'autoplay': 0, 
-                            'controls': 0, // HIDE CONTROLS (Seek bar, play/pause btn)
-                            'disablekb': 1, // DISABLE KEYBOARD
-                            'fs': 0, // DISABLE FULLSCREEN
+                            'autoplay': 1, // ENABLE AUTOPLAY
+                            'controls': 0, // HIDE CONTROLS
+                            'disablekb': 1, 
+                            'fs': 0, 
                             'rel': 0,
                             'modestbranding': 1,
                             'playsinline': 1, 
-                            'mute': 0,
+                            'mute': 1, // MUST BE MUTED FOR AUTOPLAY TO WORK ON MOBILE
                             'origin': window.location.origin 
                         },
                         events: {
@@ -123,6 +125,8 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
     const handleManualPlay = () => {
         if(playerRef.current && playerRef.current.playVideo && isPlayerReady) {
             playerRef.current.playVideo();
+            // Optional: Unmute if manual play is clicked (user interaction allows sound)
+            if(playerRef.current.unMute) playerRef.current.unMute();
             setVideoStarted(true); 
         }
     };
@@ -173,7 +177,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                    <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black group">
                        <div id="youtube-player" className="w-full h-full pointer-events-none"></div> {/* POINTER EVENTS NONE ON IFRAME */}
                        
-                       {/* Overlay for Initial Play */}
+                       {/* Overlay for Initial Play (Fallback if Autoplay Blocked) */}
                        {!videoStarted && (
                            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer" onClick={isPlayerReady ? handleManualPlay : undefined}>
                                {isPlayerReady ? (
@@ -205,6 +209,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                            </div>
                        )}
                    </div>
+                   <div className="px-2 py-1 text-[10px] text-slate-400 text-center italic">Video otomatis diputar tanpa suara. Klik tombol volume di HP jika tersedia.</div>
                </div>
 
                <div className={`glass-card p-6 rounded-[24px] transition-all duration-500 ${!videoFinished ? 'opacity-50 grayscale pointer-events-none select-none' : 'opacity-100'}`}>
