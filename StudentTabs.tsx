@@ -28,6 +28,14 @@ const SURAH_LIST = [
   "Al-Lahab", "Al-Ikhlas", "Al-Falaq", "An-Nas"
 ];
 
+// Helper to extract YouTube ID accurately
+const getVideoId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+};
+
 // --- Tab Harian ---
 export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [submitted, setSubmitted] = useState(false);
@@ -748,7 +756,7 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
     );
 };
 
-// ... (TabLiterasi, TabMateri, TabProfile remain the same) ...
+// --- Tab Literasi (Mobile Optimized - Unmuted Manual Play) ---
 export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: string }) => {
   const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
   const [answers, setAnswers] = useState<string[]>([]);
@@ -759,13 +767,14 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   // Video State
   const [videoFinished, setVideoFinished] = useState(false);
   const [videoStarted, setVideoStarted] = useState(false);
+  const [isPlayerReady, setIsPlayerReady] = useState(false);
   const playerRef = useRef<any>(null);
 
   useEffect(() => {
     if(initialDate) setDate(initialDate);
   }, [initialDate]);
 
-  // Load Youtube API
+  // Load Youtube API only once
   useEffect(() => {
       if (!window.YT) {
           const tag = document.createElement('script');
@@ -778,8 +787,11 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   useEffect(() => {
     const init = async () => {
       setLoading(true);
+      // Reset video states on date change
       setVideoFinished(false); 
       setVideoStarted(false);
+      setIsPlayerReady(false);
+
       const mat = await SupabaseService.getLiterasiMaterial(date);
       setMaterial(mat);
       
@@ -789,6 +801,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
         setSubmitted(true);
         setVideoFinished(true);
         setVideoStarted(true);
+        setIsPlayerReady(true);
       } else {
         setAnswers(new Array(mat.questions.length).fill(''));
       }
@@ -800,64 +813,60 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
   // Initialize Player when material is loaded
   useEffect(() => {
       if (!loading && material && !submitted && !videoFinished) {
-          // Extract ID
-          let videoId = '';
-          if(material.youtubeUrl.includes('v=')) videoId = material.youtubeUrl.split('v=')[1]?.split('&')[0];
-          else if(material.youtubeUrl.includes('youtu.be/')) videoId = material.youtubeUrl.split('youtu.be/')[1];
-          else if(material.youtubeUrl.includes('embed/')) videoId = material.youtubeUrl.split('embed/')[1]?.split('"')[0];
+          const videoId = getVideoId(material.youtubeUrl);
 
-          if (videoId && window.YT) {
-              window.onYouTubeIframeAPIReady = () => {
-                 createPlayer(videoId);
+          if (videoId) {
+              const initPlayer = () => {
+                 if (playerRef.current) {
+                    try { playerRef.current.destroy(); } catch(e) {}
+                 }
+
+                 playerRef.current = new window.YT.Player('youtube-player', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: videoId,
+                    playerVars: {
+                        'autoplay': 0, // Disabled to prevent mobile browser blocks
+                        'controls': 0, // Enforce watching logic
+                        'disablekb': 1,
+                        'fs': 0,
+                        'rel': 0,
+                        'modestbranding': 1,
+                        'playsinline': 1, // Crucial for iOS
+                        'mute': 0, // Unmuted
+                        'origin': window.location.origin 
+                    },
+                    events: {
+                        'onReady': () => {
+                            setIsPlayerReady(true);
+                        },
+                        'onStateChange': (event: any) => {
+                            if (event.data === 1) { // Playing
+                                setVideoStarted(true);
+                            }
+                            if (event.data === 0) { // Ended
+                                setVideoFinished(true);
+                            }
+                        }
+                    }
+                 });
               };
-              if(window.YT.Player) {
-                  createPlayer(videoId);
+
+              if (window.YT && window.YT.Player) {
+                  initPlayer();
+              } else {
+                  // If API downloaded but not ready, define global callback
+                  window.onYouTubeIframeAPIReady = initPlayer;
               }
           }
       }
   }, [loading, material, submitted]);
 
-  const createPlayer = (videoId: string) => {
-      if (playerRef.current) {
-          try { playerRef.current.destroy(); } catch(e) {}
-      }
-
-      playerRef.current = new window.YT.Player('youtube-player', {
-          height: '100%',
-          width: '100%',
-          videoId: videoId,
-          playerVars: {
-              'autoplay': 1, // Try autoplay (Desktop works)
-              'controls': 0, // Enforce watching logic
-              'disablekb': 1,
-              'fs': 0,
-              'rel': 0,
-              'modestbranding': 1,
-              'playsinline': 1, // Crucial for iOS
-              'mute': 0 // USER REQUEST: Unmuted
-          },
-          events: {
-              'onReady': (event: any) => {
-                  // Attempt play. If mobile, it will likely fail/block, staying in "unstarted" state.
-                  // The overlay button handles the fallback.
-                  event.target.playVideo();
-              },
-              'onStateChange': (event: any) => {
-                  if (event.data === 1) { // Playing
-                      setVideoStarted(true);
-                  }
-                  if (event.data === 0) { // Ended
-                      setVideoFinished(true);
-                  }
-              }
-          }
-      });
-  };
-
   const handleManualPlay = () => {
-      if(playerRef.current && playerRef.current.playVideo) {
+      if(playerRef.current && playerRef.current.playVideo && isPlayerReady) {
           playerRef.current.playVideo();
-          setVideoStarted(true); // Optimistically remove overlay
+          // Optimistic UI update
+          setVideoStarted(true); 
       }
   };
 
@@ -912,11 +921,17 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
                            
                            {/* Overlay if not started (Manual Play Backup for Mobile) */}
                            {!videoStarted && (
-                               <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer" onClick={handleManualPlay}>
-                                   <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse-glow hover:scale-110 transition-transform">
-                                       <i className="fas fa-play text-white text-3xl ml-2"></i>
+                               <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer" onClick={isPlayerReady ? handleManualPlay : undefined}>
+                                   {isPlayerReady ? (
+                                        <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse-glow hover:scale-110 transition-transform">
+                                            <i className="fas fa-play text-white text-3xl ml-2"></i>
+                                        </div>
+                                   ) : (
+                                        <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                                   )}
+                                   <div className="absolute mt-28 font-bold text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                                        {isPlayerReady ? 'Ketuk untuk Mulai' : 'Memuat Video...'}
                                    </div>
-                                   <div className="absolute mt-28 font-bold text-white text-sm bg-black/50 px-3 py-1 rounded-full">Ketuk untuk Mulai</div>
                                </div>
                            )}
 
