@@ -1,5 +1,5 @@
 
-export type Tab = 'harian' | 'literasi' | 'materi' | 'leaderboard' | 'profile' | 'monitoring' | 'users' | 'data' | 'progress';
+export type Tab = 'harian' | 'literasi' | 'materi' | 'leaderboard' | 'profile' | 'monitoring' | 'users' | 'data' | 'progress' | 'koreksi';
 export type UserRole = 'murid' | 'guru' | 'admin';
 export type Gender = 'L' | 'P';
 

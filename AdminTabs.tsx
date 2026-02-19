@@ -4,11 +4,15 @@ import { SupabaseService } from './SupabaseService';
 import { User, UserRole, Gender, CLASSES, LiterasiMaterial, GlobalSettings, getWIBDate } from './types';
 
 // --- Tab Monitoring (Guru) ---
-export const TabMonitoring = () => {
-    const [kelas, setKelas] = useState('7A');
+export const TabMonitoring = ({ currentUser }: { currentUser?: User }) => {
+    const defaultClass = (currentUser?.role === 'guru' && currentUser?.kelas) ? currentUser.kelas : '7A';
+    const [kelas, setKelas] = useState(defaultClass);
     const [date, setDate] = useState(getWIBDate());
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+
+    // If Wali Kelas, user cannot change class
+    const isWaliKelas = currentUser?.role === 'guru' && !!currentUser?.kelas;
 
     const loadData = async () => {
         setLoading(true);
@@ -29,11 +33,17 @@ export const TabMonitoring = () => {
         <div className="p-6 pb-28 animate-slide-up">
             <div className="glass-card p-4 rounded-[24px] mb-6 flex flex-col gap-3">
                 <div className="flex gap-2">
-                    <select value={kelas} onChange={e => setKelas(e.target.value)} className="flex-1 p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white">
+                    <select 
+                        value={kelas} 
+                        onChange={e => setKelas(e.target.value)} 
+                        disabled={isWaliKelas}
+                        className={`flex-1 p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white ${isWaliKelas ? 'opacity-70 cursor-not-allowed bg-slate-100' : ''}`}
+                    >
                         {CLASSES.map(c => <option key={c} value={c}>Kelas {c}</option>)}
                     </select>
                     <input type="date" value={date} onChange={e => setDate(e.target.value)} className="flex-1 p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white" />
                 </div>
+                {isWaliKelas && <p className="text-[10px] text-primary-600 font-bold text-center"><i className="fas fa-lock mr-1"></i> Anda adalah Wali Kelas {kelas}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-6">
@@ -72,6 +82,102 @@ export const TabMonitoring = () => {
                     )}
                 </div>
             </div>
+        </div>
+    );
+};
+
+// --- Tab Koreksi Literasi (NEW) ---
+export const TabKoreksiLiterasi = ({ currentUser }: { currentUser?: User }) => {
+    const defaultClass = (currentUser?.role === 'guru' && currentUser?.kelas) ? currentUser.kelas : '7A';
+    const [kelas, setKelas] = useState(defaultClass);
+    const [date, setDate] = useState(getWIBDate());
+    const [data, setData] = useState<{students: any[], questions: string[]}>({ students: [], questions: [] });
+    const [loading, setLoading] = useState(false);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+
+    const isWaliKelas = currentUser?.role === 'guru' && !!currentUser?.kelas;
+
+    useEffect(() => {
+        const load = async () => {
+            setLoading(true);
+            const res = await SupabaseService.getLiterasiRecap(kelas, date);
+            setData(res);
+            setLoading(false);
+        };
+        load();
+    }, [kelas, date]);
+
+    return (
+        <div className="p-6 pb-28 animate-slide-up">
+            <div className="glass-card bg-gradient-to-r from-pink-500 to-rose-600 rounded-[24px] p-6 text-white mb-6 shadow-xl text-center">
+                <i className="fas fa-clipboard-check text-4xl mb-2 opacity-80"></i>
+                <h2 className="text-xl font-bold">Koreksi Literasi</h2>
+                <p className="text-xs opacity-90">Cek pemahaman siswa</p>
+            </div>
+
+            <div className="glass-card p-4 rounded-[24px] mb-6 flex flex-col gap-3">
+                <div className="flex gap-2">
+                    <select 
+                        value={kelas} 
+                        onChange={e => setKelas(e.target.value)} 
+                        disabled={isWaliKelas}
+                        className={`flex-1 p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white ${isWaliKelas ? 'opacity-70 cursor-not-allowed bg-slate-100' : ''}`}
+                    >
+                        {CLASSES.map(c => <option key={c} value={c}>Kelas {c}</option>)}
+                    </select>
+                    <input type="date" value={date} onChange={e => setDate(e.target.value)} className="flex-1 p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white" />
+                </div>
+            </div>
+
+            {loading ? <div className="p-10 text-center text-slate-500"><i className="fas fa-circle-notch fa-spin"></i> Memuat...</div> : (
+                <div className="space-y-3">
+                    {data.questions.length === 0 && (
+                        <div className="p-6 text-center text-slate-400 glass-card rounded-[24px]">Belum ada soal literasi pada tanggal ini.</div>
+                    )}
+                    
+                    {data.questions.length > 0 && data.students.map(s => {
+                        const isOpen = expandedId === s.id;
+                        return (
+                            <div key={s.id} className="glass-card rounded-[20px] overflow-hidden transition-all duration-300 border border-slate-100">
+                                <button 
+                                    onClick={() => setExpandedId(isOpen ? null : s.id)}
+                                    className={`w-full p-4 flex items-center justify-between transition-colors ${isOpen ? 'bg-slate-50' : 'hover:bg-white/60'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${s.submitted ? 'bg-green-500' : 'bg-slate-300'}`}>
+                                            {s.name.charAt(0)}
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="font-bold text-sm text-slate-700">{s.name}</p>
+                                            <p className="text-[10px] text-slate-400">{s.submitted ? 'Sudah Mengerjakan' : 'Belum Mengerjakan'}</p>
+                                        </div>
+                                    </div>
+                                    <i className={`fas fa-chevron-down text-slate-300 transition-transform ${isOpen ? 'rotate-180' : ''}`}></i>
+                                </button>
+
+                                {isOpen && s.submitted && (
+                                    <div className="p-4 bg-white/50 border-t border-slate-100 animate-slide-up">
+                                        {data.questions.map((q, idx) => (
+                                            <div key={idx} className="mb-4 last:mb-0">
+                                                <p className="text-[10px] font-bold text-slate-400 mb-1">SOAL {idx + 1}: {q}</p>
+                                                <div className="p-3 bg-white border border-slate-100 rounded-xl text-sm text-slate-700 leading-relaxed shadow-sm">
+                                                    {s.answers[idx] || <span className="text-red-300 italic">Tidak dijawab</span>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {isOpen && !s.submitted && (
+                                    <div className="p-4 text-center text-xs text-red-400 italic bg-red-50 border-t border-red-100">
+                                        Siswa belum mengirimkan jawaban.
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                    {data.students.length === 0 && <div className="text-center text-slate-400 p-6">Tidak ada siswa.</div>}
+                </div>
+            )}
         </div>
     );
 };

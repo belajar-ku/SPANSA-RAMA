@@ -4,7 +4,7 @@ import { SupabaseService } from './SupabaseService';
 import { LoginPage } from './LoginPage';
 import { User, Tab, APP_LOGO_URL, RamadanTarget, getWIBDate } from './types';
 import { TabHarian, TabLiterasi, TabMateri, TabProfile, TabLeaderboard, TabProgress } from './StudentTabs';
-import { TabAdminUsers, TabAdminData, TabMonitoring } from './AdminTabs';
+import { TabAdminUsers, TabAdminData, TabMonitoring, TabKoreksiLiterasi } from './AdminTabs';
 
 // --- Helper: Title Case (EYD) ---
 export const toTitleCase = (str: string) => {
@@ -334,11 +334,14 @@ const App = () => {
             {activeTab === 'materi' && <TabMateri />}
             {activeTab === 'profile' && <TabProfile user={user} onLogout={handleLogout} />}
             
+            {/* ADMIN / GURU TABS */}
             {(user.role === 'admin' || user.role === 'guru') && (
                 <>
-                    {activeTab === 'monitoring' && <TabMonitoring />}
-                    {activeTab === 'users' && <TabAdminUsers />}
-                    {activeTab === 'data' && <TabAdminData />}
+                    {activeTab === 'monitoring' && <TabMonitoring currentUser={user} />}
+                    {/* Guru only sees users/data if admin allows, but per request we hide it for Guru */}
+                    {activeTab === 'users' && user.role === 'admin' && <TabAdminUsers />}
+                    {activeTab === 'data' && user.role === 'admin' && <TabAdminData />}
+                    {activeTab === 'koreksi' && <TabKoreksiLiterasi currentUser={user} />}
                 </>
             )}
         </main>
@@ -355,9 +358,17 @@ const App = () => {
                         <TabBtn id="materi" icon="fa-book-open" />
                         <TabBtn id="profile" icon="fa-user" />
                     </>
-                 ) : (
+                 ) : user.role === 'guru' ? (
                     <>
                         <TabBtn id="monitoring" icon="fa-chart-pie" />
+                        <TabBtn id="koreksi" icon="fa-clipboard-check" />
+                        <TabBtn id="profile" icon="fa-user" />
+                    </>
+                 ) : (
+                    /* ADMIN VIEW */
+                    <>
+                        <TabBtn id="monitoring" icon="fa-chart-pie" />
+                        <TabBtn id="koreksi" icon="fa-clipboard-check" />
                         <TabBtn id="users" icon="fa-users" />
                         <TabBtn id="data" icon="fa-database" />
                         <TabBtn id="profile" icon="fa-user" />

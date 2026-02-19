@@ -693,32 +693,43 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
 export const TabLeaderboard = ({ user }: { user?: User }) => {
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [genderTab, setGenderTab] = useState<'L' | 'P'>('L');
+    const [tab, setTab] = useState<'L' | 'P' | 'Kelas'>('L');
 
     useEffect(() => {
         setLoading(true);
-        // SupabaseService.getLeaderboard now accepts gender ('L' or 'P')
-        SupabaseService.getLeaderboard(genderTab).then(data => {
-            setUsers(data);
+        const fetchData = async () => {
+            if (tab === 'Kelas') {
+                const data = await SupabaseService.getClassLeaderboard();
+                setUsers(data);
+            } else {
+                const data = await SupabaseService.getLeaderboard(tab);
+                setUsers(data);
+            }
             setLoading(false);
-        });
-    }, [user, genderTab]);
+        };
+        fetchData();
+    }, [user, tab]);
 
     return (
         <div className="p-6 pb-28 animate-slide-up">
             <div className="glass-card bg-gradient-to-r from-amber-400 to-orange-500 rounded-[32px] p-6 text-white mb-6 shadow-xl text-center relative overflow-hidden">
                 <i className="fas fa-trophy text-6xl absolute -bottom-4 -right-4 opacity-20"></i>
                 <h2 className="text-2xl font-black mb-1">Papan Juara</h2>
-                <p className="text-xs font-bold opacity-90">Kategori {genderTab === 'L' ? 'Putra' : 'Putri'}</p>
+                <p className="text-xs font-bold opacity-90">
+                    {tab === 'Kelas' ? 'Kategori Antar Kelas' : `Kategori ${tab === 'L' ? 'Putra' : 'Putri'}`}
+                </p>
             </div>
 
-            {/* Gender Switcher */}
+            {/* Tab Switcher */}
             <div className="flex p-1 bg-slate-200 rounded-2xl mb-6 shadow-inner">
-                 <button onClick={() => setGenderTab('L')} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${genderTab === 'L' ? 'bg-white text-blue-600 shadow-md transform scale-100' : 'text-slate-500 hover:bg-white/50'}`}>
+                 <button onClick={() => setTab('L')} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${tab === 'L' ? 'bg-white text-blue-600 shadow-md transform scale-100' : 'text-slate-500 hover:bg-white/50'}`}>
                      <i className="fas fa-male mr-1"></i> Putra
                  </button>
-                 <button onClick={() => setGenderTab('P')} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${genderTab === 'P' ? 'bg-white text-pink-600 shadow-md transform scale-100' : 'text-slate-500 hover:bg-white/50'}`}>
+                 <button onClick={() => setTab('P')} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${tab === 'P' ? 'bg-white text-pink-600 shadow-md transform scale-100' : 'text-slate-500 hover:bg-white/50'}`}>
                      <i className="fas fa-female mr-1"></i> Putri
+                 </button>
+                 <button onClick={() => setTab('Kelas')} className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${tab === 'Kelas' ? 'bg-white text-purple-600 shadow-md transform scale-100' : 'text-slate-500 hover:bg-white/50'}`}>
+                     <i className="fas fa-school mr-1"></i> Kelas
                  </button>
             </div>
 
@@ -739,7 +750,8 @@ export const TabLeaderboard = ({ user }: { user?: User }) => {
                                     </div>
                                     <div>
                                         <h4 className={`font-bold text-sm ${textClass}`}>{u.name}</h4>
-                                        <p className="text-[10px] font-bold text-slate-400">{u.kelas || 'Umum'}</p>
+                                        {/* Jika Mode Kelas, tidak perlu sub-info kelas */}
+                                        {tab !== 'Kelas' && <p className="text-[10px] font-bold text-slate-400">{u.kelas || 'Umum'}</p>}
                                     </div>
                                 </div>
                                 <div className="text-right">
@@ -799,11 +811,13 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
       if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
         setAnswers(log.details.literasiResponse);
         setSubmitted(true);
+        // Jika sudah submit, anggap video sudah ditonton agar bisa edit
         setVideoFinished(true);
         setVideoStarted(true);
         setIsPlayerReady(true);
       } else {
         setAnswers(new Array(mat.questions.length).fill(''));
+        setSubmitted(false);
       }
       setLoading(false);
     };
@@ -812,7 +826,8 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
 
   // Initialize Player when material is loaded
   useEffect(() => {
-      if (!loading && material && !submitted && !videoFinished) {
+      // Load player if not loaded OR if loaded but submitted (re-init to allow watch again if wanted, though unnecessary for edit)
+      if (!loading && material) {
           const videoId = getVideoId(material.youtubeUrl);
 
           if (videoId) {
@@ -827,7 +842,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
                     videoId: videoId,
                     playerVars: {
                         'autoplay': 0, // Disabled to prevent mobile browser blocks
-                        'controls': 0, // Enforce watching logic
+                        'controls': 1, // Allow controls for review
                         'disablekb': 1,
                         'fs': 0,
                         'rel': 0,
@@ -860,7 +875,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
               }
           }
       }
-  }, [loading, material, submitted]);
+  }, [loading, material]);
 
   const handleManualPlay = () => {
       if(playerRef.current && playerRef.current.playVideo && isPlayerReady) {
@@ -886,7 +901,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
      const success = await SupabaseService.saveDailyLog(payload);
      if(success) {
         setSubmitted(true);
-        Swal.fire('Sukses', 'Literasi tercatat!', 'success');
+        Swal.fire('Sukses', 'Jawaban Literasi berhasil disimpan!', 'success');
      } else Swal.fire('Gagal', 'Terjadi kesalahan.', 'error');
   };
 
@@ -908,397 +923,175 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate?: s
            <div className="space-y-6">
                <div className="glass-card p-2 rounded-[24px] relative overflow-hidden">
                    {/* Video Container */}
-                   {submitted ? (
-                       <div className="aspect-video w-full bg-slate-900 rounded-xl flex items-center justify-center text-white">
-                           <div>
-                               <i className="fas fa-check-circle text-4xl mb-2 text-green-500"></i>
-                               <p className="font-bold">Literasi Selesai</p>
+                   {/* We remove the 'submitted' check blocking the video, user can rewatch if they want */}
+                   <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black group">
+                       <div id="youtube-player" className="w-full h-full"></div>
+                       
+                       {/* Overlay if not started (Manual Play Backup for Mobile) */}
+                       {!videoStarted && (
+                           <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer" onClick={isPlayerReady ? handleManualPlay : undefined}>
+                               {isPlayerReady ? (
+                                    <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse-glow hover:scale-110 transition-transform">
+                                        <i className="fas fa-play text-white text-3xl ml-2"></i>
+                                    </div>
+                               ) : (
+                                    <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                               )}
+                               <div className="absolute mt-28 font-bold text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                                    {isPlayerReady ? 'Ketuk untuk Mulai' : 'Memuat Video...'}
+                               </div>
                            </div>
-                       </div>
-                   ) : (
-                       <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black group">
-                           <div id="youtube-player" className="w-full h-full"></div>
-                           
-                           {/* Overlay if not started (Manual Play Backup for Mobile) */}
-                           {!videoStarted && (
-                               <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer" onClick={isPlayerReady ? handleManualPlay : undefined}>
-                                   {isPlayerReady ? (
-                                        <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse-glow hover:scale-110 transition-transform">
-                                            <i className="fas fa-play text-white text-3xl ml-2"></i>
-                                        </div>
-                                   ) : (
-                                        <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-                                   )}
-                                   <div className="absolute mt-28 font-bold text-white text-sm bg-black/50 px-3 py-1 rounded-full">
-                                        {isPlayerReady ? 'Ketuk untuk Mulai' : 'Memuat Video...'}
-                                   </div>
-                               </div>
-                           )}
+                       )}
 
-                           {/* Transparent Overlay to prevent clicking while playing */}
-                           {videoStarted && !videoFinished && (
-                               <div className="absolute inset-0 z-20 bg-transparent"></div>
-                           )}
-                           
-                           {/* Finished Overlay */}
-                           {videoFinished && (
-                               <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center text-white backdrop-blur-sm">
-                                   <div className="text-center animate-slide-up">
-                                       <i className="fas fa-check-circle text-4xl mb-2 text-green-400"></i>
-                                       <p className="font-bold">Video Selesai</p>
-                                       <p className="text-xs">Silakan isi jawaban di bawah</p>
-                                   </div>
+                       {/* Transparent Overlay to prevent clicking while playing */}
+                       {videoStarted && !videoFinished && (
+                           <div className="absolute inset-0 z-20 bg-transparent"></div>
+                       )}
+                       
+                       {/* Finished Overlay - Only show if just finished watching and not submitted yet, OR purely purely decorative if submitted */}
+                       {videoFinished && !submitted && (
+                           <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center text-white backdrop-blur-sm pointer-events-none">
+                               <div className="text-center animate-slide-up">
+                                   <i className="fas fa-check-circle text-4xl mb-2 text-green-400"></i>
+                                   <p className="font-bold">Video Selesai</p>
+                                   <p className="text-xs">Silakan isi jawaban di bawah</p>
                                </div>
-                           )}
-                       </div>
-                   )}
+                           </div>
+                       )}
+                   </div>
                </div>
 
-               <div className={`glass-card p-6 rounded-[24px] transition-all duration-500 ${!videoFinished && !submitted ? 'opacity-50 grayscale' : 'opacity-100'}`}>
+               <div className={`glass-card p-6 rounded-[24px] transition-all duration-500 ${!videoFinished ? 'opacity-50 grayscale' : 'opacity-100'}`}>
                    <h3 className="font-bold text-slate-800 mb-4 flex justify-between items-center">
                        <span>Pertanyaan Pemahaman ({date})</span>
-                       {!videoFinished && !submitted && <i className="fas fa-lock text-slate-400"></i>}
+                       {!videoFinished && <i className="fas fa-lock text-slate-400"></i>}
                    </h3>
                    
-                   {submitted ? (
-                       <div className="bg-green-50 p-4 rounded-xl border border-green-200 text-green-800 text-sm font-bold text-center"><i className="fas fa-check-circle text-2xl mb-2 block"></i>Kamu sudah mengerjakan literasi tanggal ini.</div>
-                   ) : (
-                       <div className="space-y-4">
-                           {material.questions.map((q, idx) => (
-                               <div key={idx}>
-                                   <label className="text-xs font-bold text-slate-500 block mb-2">{idx+1}. {q}</label>
-                                   <textarea 
-                                        disabled={!videoFinished}
-                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-pink-200 outline-none resize-none disabled:bg-slate-100 disabled:cursor-not-allowed" 
-                                        rows={3} 
-                                        value={answers[idx]} 
-                                        onChange={e => { const newA = [...answers]; newA[idx] = toTitleCase(e.target.value); setAnswers(newA); }} 
-                                        placeholder={videoFinished ? "Tulis jawabanmu..." : "Tonton video sampai habis dulu..."} 
-                                   />
-                               </div>
-                           ))}
-                           <button 
-                                onClick={handleSave} 
-                                disabled={!videoFinished}
-                                className={`w-full py-4 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 ${videoFinished ? 'bg-pink-600 text-white hover:bg-pink-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
-                           >
-                               {videoFinished ? 'Kirim Jawaban' : 'Selesaikan Video Dulu'} {videoFinished && <i className="fas fa-paper-plane"></i>}
-                           </button>
-                       </div>
-                   )}
+                   {/* Always Show Form (Edit Mode allowed) */}
+                   <div className="space-y-4">
+                       {submitted && (
+                           <div className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-xs font-bold mb-4 flex items-center gap-2">
+                               <i className="fas fa-info-circle"></i> Kamu sudah mengirim jawaban. Silakan edit jika perlu.
+                           </div>
+                       )}
+
+                       {material.questions.map((q, idx) => (
+                           <div key={idx}>
+                               <label className="text-xs font-bold text-slate-500 block mb-2">{idx+1}. {q}</label>
+                               <textarea 
+                                    disabled={!videoFinished}
+                                    className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-pink-200 outline-none resize-none disabled:bg-slate-100 disabled:cursor-not-allowed" 
+                                    rows={3} 
+                                    value={answers[idx]} 
+                                    onChange={e => { const newA = [...answers]; newA[idx] = toTitleCase(e.target.value); setAnswers(newA); }} 
+                                    placeholder={videoFinished ? "Tulis jawabanmu..." : "Tonton video sampai habis dulu..."} 
+                               />
+                           </div>
+                       ))}
+                       <button 
+                            onClick={handleSave} 
+                            disabled={!videoFinished}
+                            className={`w-full py-4 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 ${videoFinished ? 'bg-pink-600 text-white hover:bg-pink-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                       >
+                           {submitted ? 'Update Jawaban' : (videoFinished ? 'Kirim Jawaban' : 'Selesaikan Video Dulu')} 
+                           {videoFinished && <i className="fas fa-paper-plane"></i>}
+                       </button>
+                   </div>
                </div>
            </div>
       </div>
   );
 };
 
-// ... (TabMateri and TabProfile remain the same) ...
 export const TabMateri = () => {
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
-  const [prayerTimes, setPrayerTimes] = useState<any>(null);
-  const date = getWIBDate();
-
-  useEffect(() => {
-     SupabaseService.getPrayerSchedule(date).then(setPrayerTimes);
-  }, []);
-
-  const MATERI_LIST = [
-    { 
-        title: "Fikih Puasa", 
-        icon: "fa-book-quran", 
-        color: "text-emerald-600", 
-        bg: "bg-emerald-50",
-        content: (
-            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
-                <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 mb-3">
-                    <p className="font-arab text-right text-xl text-emerald-800 mb-3 leading-loose">يَا أَيُّهَا الَّذِينَ آمَنُوا كُتِبَ عَلَيْكُمُ الصِّيَامُ كَمَا كُتِبَ عَلَى الَّذِينَ مِنْ قَبْلِكُمْ لَعَلَّكُمْ تَتَّقُونَ</p>
-                    <p className="text-xs italic text-emerald-700">"Wahai orang-orang yang beriman! Diwajibkan atas kamu berpuasa sebagaimana diwajibkan atas orang-orang sebelum kamu agar kamu bertakwa." (QS. Al-Baqarah: 183)</p>
-                </div>
-                
-                <h4 className="font-bold text-emerald-800 border-b border-emerald-100 pb-1">1. Pengertian</h4>
-                <p>Secara bahasa, puasa (shaum) berarti menahan. Secara istilah syariat, puasa adalah menahan diri dari segala hal yang membatalkan (makan, minum, syahwat) mulai dari terbit fajar (Subuh) hingga terbenam matahari (Magrib) dengan niat ibadah kepada Allah SWT.</p>
-                
-                <h4 className="font-bold text-emerald-800 border-b border-emerald-100 pb-1 mt-2">2. Syarat Wajib Puasa</h4>
-                <ul className="list-disc pl-5 space-y-1 text-xs">
-                    <li>Beragama Islam</li>
-                    <li>Balig (dewasa) dan Berakal</li>
-                    <li>Mampu/Kuat berpuasa</li>
-                    <li>Mukim (tidak sedang dalam perjalanan jauh/musafir)</li>
-                </ul>
-
-                <h4 className="font-bold text-emerald-800 border-b border-emerald-100 pb-1 mt-2">3. Rukun Puasa</h4>
-                <ul className="list-disc pl-5 space-y-1 text-xs">
-                    <li><strong>Niat:</strong> Dilakukan pada malam hari sebelum terbit fajar (untuk puasa wajib).</li>
-                    <li><strong>Menahan Diri (Imsak):</strong> Menjauhi segala pembatal puasa dari Subuh sampai Magrib.</li>
-                </ul>
-
-                <h4 className="font-bold text-emerald-800 border-b border-emerald-100 pb-1 mt-2">4. Pembatal Puasa</h4>
-                <p className="text-xs">Makan/minum dengan sengaja, muntah disengaja, berhubungan suami istri, keluar mani dengan sengaja, haid/nifas, gila, dan murtad.</p>
-            </div>
-        )
-    },
-    { 
-        title: "Berbakti Kepada Orang Tua", 
-        icon: "fa-hands-holding-child", 
-        color: "text-blue-600", 
-        bg: "bg-blue-50",
-        content: (
-            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-3">
-                    <p className="font-arab text-right text-xl text-blue-800 mb-3 leading-loose">وَقَضَىٰ رَبُّكَ أَلَّا تَعْبُدُوا إِلَّا إِيَّاهُ وَبِالْوَالِدَيْنِ إِحْسَانًا</p>
-                    <p className="text-xs italic text-blue-700">"Dan Tuhanmu telah memerintahkan supaya kamu jangan menyembah selain Dia dan hendaklah kamu berbuat baik pada ibu bapakmu dengan sebaik-baiknya." (QS. Al-Isra: 23)</p>
-                </div>
-
-                <p>Birrul Walidain (berbakti kepada orang tua) adalah salah satu amalan paling mulia. Bahkan, rida Allah bergantung pada rida orang tua.</p>
-
-                <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                    <p className="font-bold text-xs mb-1">Hadis Riwayat Tirmidzi:</p>
-                    <p className="italic text-xs">"Rida Allah tergantung pada rida orang tua, dan murka Allah tergantung pada murka orang tua."</p>
-                </div>
-
-                <h4 className="font-bold text-blue-800 border-b border-blue-100 pb-1 mt-2">Cara Berbakti:</h4>
-                <ul className="list-disc pl-5 space-y-1 text-xs">
-                    <li>Berbicara dengan sopan dan lembut, jangan berkata "ah".</li>
-                    <li>Mendoakan mereka setiap selesai salat ("Rabbighfirli waliwalidayya...").</li>
-                    <li>Membantu pekerjaan rumah tanpa diminta.</li>
-                    <li>Menjaga nama baik keluarga dengan berprestasi dan berakhlak mulia.</li>
-                </ul>
-            </div>
-        )
-    },
-    { 
-        title: "Zakat Fitrah", 
-        icon: "fa-sack-dollar", 
-        color: "text-amber-600", 
-        bg: "bg-amber-50",
-        content: (
-            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
-                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-3">
-                    <p className="font-bold text-amber-800 text-xs mb-1">Hadis Riwayat Abu Daud:</p>
-                    <p className="italic text-xs">"Rasulullah SAW mewajibkan zakat fitrah sebagai pembersih bagi orang yang berpuasa dari perbuatan sia-sia dan kata-kata kotor, serta sebagai makanan bagi orang-orang miskin."</p>
-                </div>
-
-                <h4 className="font-bold text-amber-800 border-b border-amber-100 pb-1">1. Ketentuan</h4>
-                <p>Zakat fitrah wajib dikeluarkan oleh setiap muslim (laki-laki/perempuan, tua/muda) yang memiliki kelebihan makanan pada hari raya Idulfitri.</p>
-
-                <h4 className="font-bold text-amber-800 border-b border-amber-100 pb-1 mt-2">2. Besaran Zakat</h4>
-                <p>Sebanyak 1 sha' makanan pokok (beras). Di Indonesia disetarakan dengan <strong>2,5 kg</strong> atau <strong>3,5 liter</strong> beras per jiwa.</p>
-
-                <h4 className="font-bold text-amber-800 border-b border-amber-100 pb-1 mt-2">3. Waktu Pembayaran</h4>
-                <ul className="list-disc pl-5 space-y-1 text-xs">
-                    <li><strong>Waktu Utama:</strong> Pada pagi hari sebelum salat Idulfitri.</li>
-                    <li><strong>Waktu Boleh:</strong> Sejak awal Ramadan.</li>
-                    <li><strong>Waktu Makruh:</strong> Setelah salat Idulfitri hingga sebelum terbenam matahari (dianggap sedekah biasa).</li>
-                </ul>
-            </div>
-        )
-    },
-    { 
-        title: "Masa Depanku", 
-        icon: "fa-rocket", 
-        color: "text-purple-600", 
-        bg: "bg-purple-50",
-        content: (
-            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
-                 <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-3 text-center">
-                    <p className="font-arab text-xl text-purple-800 mb-1 font-bold">مَنْ جَدَّ وَجَدَ</p>
-                    <p className="text-xs italic text-purple-700">"Man jadda wajada." (Barang siapa yang bersungguh-sungguh, ia akan berhasil).</p>
-                </div>
-                
-                <p>Masa depan bukan ditunggu, tapi diciptakan hari ini. Sebagai murid muslim yang cerdas, persiapan masa depan mencakup dunia dan akhirat.</p>
-
-                <h4 className="font-bold text-purple-800 border-b border-purple-100 pb-1 mt-2">Tips Sukses Murid:</h4>
-                <ul className="list-disc pl-5 space-y-2 text-xs">
-                    <li><strong>Disiplin Waktu:</strong> Seperti salat yang tepat waktu, belajarpun harus terjadwal. Jangan menunda tugas.</li>
-                    <li><strong>Hormati Guru:</strong> Ilmu akan mudah masuk jika kita memuliakan guru yang memberikannya.</li>
-                    <li><strong>Doa & Ikhtiar:</strong> Belajar keras tanpa doa adalah sombong, doa tanpa belajar adalah bohong.</li>
-                    <li><strong>Cari Passion:</strong> Temukan apa yang kamu suka, kembangkan skill di sana, tapi jangan lupakan kewajiban akademik.</li>
-                </ul>
-            </div>
-        )
-    },
-    { 
-        title: "Tips Jujur dan Bertanggung Jawab", 
-        icon: "fa-shield-heart", 
-        color: "text-rose-600", 
-        bg: "bg-rose-50",
-        content: (
-            <div className="space-y-4 text-sm text-slate-700 leading-relaxed">
-                 <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 mb-3">
-                    <p className="font-bold text-rose-800 text-xs mb-1">Hadis Riwayat Muslim:</p>
-                    <p className="italic text-xs">"Hendaklah kalian berlaku jujur, karena kejujuran itu menuntun kepada kebaikan, dan kebaikan menuntun kepada surga."</p>
-                </div>
-
-                <p>Jujur adalah mata uang yang berlaku di mana saja. Orang yang jujur akan tenang hatinya, sedangkan pembohong akan selalu gelisah.</p>
-
-                <h4 className="font-bold text-rose-800 border-b border-rose-100 pb-1 mt-2">Penerapan Tanggung Jawab:</h4>
-                <ul className="list-disc pl-5 space-y-2 text-xs">
-                    <li><strong>Pada Diri Sendiri:</strong> Menjaga kesehatan, ibadah, dan belajar tanpa perlu disuruh orang tua.</li>
-                    <li><strong>Pada Tugas Sekolah:</strong> Mengerjakan PR sendiri. Menyontek adalah bibit korupsi.</li>
-                    <li><strong>Pada Barang Titipan:</strong> Jika meminjam barang teman, jaga baik-baik dan kembalikan tepat waktu.</li>
-                    <li><strong>Berani Mengaku Salah:</strong> Jika berbuat salah, minta maaf dan perbaiki, bukan mencari alasan.</li>
-                </ul>
-            </div>
-        )
-    }
-  ];
-
-  return (
-    <div className="p-6 pb-28 animate-slide-up">
-       {/* UPDATED: Green Theme Container */}
-       <div className="glass-card bg-gradient-to-br from-emerald-800 to-teal-900 rounded-[32px] p-6 text-white shadow-xl mb-6 relative overflow-hidden">
-          <div className="relative z-10 text-center">
-             <i className="fas fa-kaaba text-5xl mb-3 opacity-80"></i>
-             <h2 className="text-xl font-bold">Khazanah Islam</h2>
-             <p className="text-xs text-emerald-100">Jadwal Imsakiyah & Materi</p>
-          </div>
-       </div>
-
-       {/* Jadwal Salat Widget (Permanent Header) - UPDATED: Green Border & Text */}
-       {prayerTimes && (
-           <div className="glass-card p-4 rounded-[28px] mb-6 animate-slide-up border-2 border-emerald-200">
-               <div className="text-center mb-4">
-                   <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Jadwal Salat Pasuruan</h3>
-                   <p className="text-xs text-slate-400 font-bold">{date}</p>
-               </div>
-               <div className="grid grid-cols-3 gap-2">
-                   <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
-                       <p className="text-[10px] font-bold text-slate-400">IMSAK</p>
-                       <p className="font-black text-slate-700">{prayerTimes.Imsak}</p>
-                   </div>
-                   <div className="bg-emerald-50 p-2 rounded-xl text-center border border-emerald-100">
-                       <p className="text-[10px] font-bold text-emerald-500">SUBUH</p>
-                       <p className="font-black text-emerald-700">{prayerTimes.Fajr}</p>
-                   </div>
-                   <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
-                       <p className="text-[10px] font-bold text-slate-400">DUHA</p>
-                       <p className="font-black text-slate-700">06:00</p>
-                   </div>
-                   <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
-                       <p className="text-[10px] font-bold text-slate-400">ZUHUR</p>
-                       <p className="font-black text-slate-700">{prayerTimes.Dhuhr}</p>
-                   </div>
-                   <div className="bg-slate-50 p-2 rounded-xl text-center border border-slate-100">
-                       <p className="text-[10px] font-bold text-slate-400">ASAR</p>
-                       <p className="font-black text-slate-700">{prayerTimes.Asr}</p>
-                   </div>
-                   <div className="bg-orange-50 p-2 rounded-xl text-center border border-orange-100">
-                       <p className="text-[10px] font-bold text-orange-500">MAGRIB</p>
-                       <p className="font-black text-orange-700">{prayerTimes.Maghrib}</p>
-                   </div>
-                   <div className="bg-indigo-50 p-2 rounded-xl text-center border border-indigo-100 col-span-3">
-                       <p className="text-[10px] font-bold text-indigo-500">ISYA (Tarawih 30mnt setelah Isya)</p>
-                       <p className="font-black text-indigo-700">{prayerTimes.Isha}</p>
-                   </div>
-               </div>
-           </div>
-       )}
-       
-       <div className="space-y-3">
-           {MATERI_LIST.map((item, idx) => {
-               const isOpen = activeIdx === idx;
-               return (
-                   <div key={idx} className="glass-card rounded-[24px] overflow-hidden transition-all duration-300">
-                       <button 
-                         onClick={() => setActiveIdx(isOpen ? null : idx)}
-                         className={`w-full p-5 flex items-center justify-between transition-colors ${isOpen ? item.bg : 'hover:bg-white/60'}`}
-                       >
-                           <div className="flex items-center gap-4">
-                               <div className={`w-10 h-10 rounded-full bg-white flex items-center justify-center ${item.color} shadow-sm text-lg`}>
-                                   <i className={`fas ${item.icon}`}></i>
-                               </div>
-                               <h3 className="font-bold text-slate-800 text-sm text-left">{item.title}</h3>
-                           </div>
-                           <div className={`transition-transform duration-300 text-slate-400 ${isOpen ? 'rotate-90' : ''}`}>
-                               <i className="fas fa-chevron-right"></i>
-                           </div>
-                       </button>
-                       
-                       <div className={`overflow-hidden transition-all duration-300 ${isOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                           <div className="p-5 pt-0 border-t border-slate-100 bg-white/40">
-                               {item.content}
-                           </div>
-                       </div>
-                   </div>
-               );
-           })}
-       </div>
-    </div>
-  );
-};
-
-// --- Tab Profile (Restored) ---
-export const TabProfile = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
-    const [stats, setStats] = useState({ points: 0, days: 0 });
-    
-    useEffect(() => {
-        // Fetch simple stats
-        const loadStats = async () => {
-             const logs = await SupabaseService.getStudentRecap(user.id);
-             let totalP = 0;
-             logs.forEach(l => totalP += (l.total_points || 0));
-             setStats({ points: totalP, days: logs.length });
-        };
-        loadStats();
-    }, [user.id]);
+    const materials = [
+        { title: "Panduan Puasa Ramadan", desc: "Syarat, Rukun, dan Yang Membatalkan", url: "#", icon: "fa-book-open", color: "text-blue-500 bg-blue-100" },
+        { title: "Keutamaan Tarawih", desc: "Pahala salat malam di bulan Ramadan", url: "#", icon: "fa-moon", color: "text-purple-500 bg-purple-100" },
+        { title: "Zakat Fitrah", desc: "Ketentuan dan waktu pembayaran", url: "#", icon: "fa-hand-holding-heart", color: "text-green-500 bg-green-100" },
+        { title: "Lailatulqadar", desc: "Tanda-tanda dan amalan utama", url: "#", icon: "fa-star", color: "text-yellow-500 bg-yellow-100" },
+    ];
 
     return (
         <div className="p-6 pb-28 animate-slide-up">
-            <div className="glass-card bg-gradient-to-br from-primary-600 to-indigo-700 rounded-[32px] p-8 text-white text-center shadow-2xl mb-6 relative overflow-hidden">
-                <div className="relative z-10">
-                    <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold border-2 border-white/30 shadow-inner">
+            <div className="glass-card bg-gradient-to-r from-teal-500 to-emerald-500 rounded-[32px] p-6 text-white mb-6 shadow-xl text-center relative overflow-hidden">
+                <i className="fas fa-book-reader text-6xl absolute -bottom-4 -right-4 opacity-20"></i>
+                <h2 className="text-xl font-bold mb-1">Materi Ramadan</h2>
+                <p className="text-xs opacity-90">Perkaya ilmu dan wawasanmu</p>
+            </div>
+
+            <div className="space-y-4">
+                {materials.map((m, i) => (
+                    <div key={i} className="glass-card p-4 rounded-[24px] flex items-center gap-4 hover:bg-slate-50 transition cursor-pointer shadow-sm border border-slate-100" onClick={() => Swal.fire('Info', 'Materi lengkap akan segera tersedia.', 'info')}>
+                        <div className={`w-12 h-12 rounded-[18px] flex items-center justify-center text-xl shadow-sm ${m.color}`}>
+                            <i className={`fas ${m.icon}`}></i>
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-slate-700 text-sm">{m.title}</h4>
+                            <p className="text-[10px] text-slate-400 font-bold">{m.desc}</p>
+                        </div>
+                        <div className="ml-auto text-slate-300">
+                            <i className="fas fa-chevron-right"></i>
+                        </div>
+                    </div>
+                ))}
+            </div>
+            
+            <div className="mt-8 p-6 bg-blue-50 rounded-[24px] text-center border border-blue-100">
+                <i className="fas fa-info-circle text-2xl text-blue-300 mb-2"></i>
+                <p className="text-xs text-blue-800 font-bold leading-relaxed">
+                    "Barang siapa menempuh jalan untuk mencari ilmu, maka Allah akan memudahkan baginya jalan menuju surga."
+                    <br/><span className="opacity-60 font-normal">(HR. Muslim)</span>
+                </p>
+            </div>
+        </div>
+    );
+};
+
+export const TabProfile = ({ user, onLogout }: { user: User, onLogout: () => void }) => {
+    return (
+        <div className="p-6 pb-28 animate-slide-up">
+             <div className="glass-card bg-white p-6 rounded-[32px] shadow-xl text-center relative overflow-hidden mb-6 border border-slate-100">
+                 <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-primary-500 to-indigo-600 opacity-10"></div>
+                 <div className="relative z-10">
+                    <div className="w-24 h-24 bg-white rounded-full mx-auto flex items-center justify-center text-4xl text-primary-600 shadow-xl border-4 border-white mb-4">
                         {user.name.charAt(0)}
                     </div>
-                    <h2 className="text-xl font-black mb-1">{user.name}</h2>
-                    <p className="text-xs font-medium opacity-80 uppercase tracking-widest">{user.role} {user.kelas ? `• ${user.kelas}` : ''}</p>
+                    <h2 className="text-xl font-black text-slate-800 mb-1">{user.name}</h2>
+                    <p className="text-xs font-bold text-white bg-primary-500 px-4 py-1.5 rounded-full inline-block mb-6 shadow-md shadow-primary-200">
+                        {user.role === 'murid' ? `Kelas ${user.kelas}` : user.role.toUpperCase()}
+                    </p>
                     
-                    <div className="flex justify-center gap-6 mt-6">
-                        <div>
-                            <p className="text-2xl font-black">{stats.points}</p>
-                            <p className="text-[10px] uppercase tracking-wider opacity-70">Total Poin</p>
+                    <div className="grid grid-cols-2 gap-4 text-left">
+                        <div className="bg-slate-50 p-4 rounded-[20px] border border-slate-100">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">USERNAME</p>
+                            <p className="text-sm font-bold text-slate-700 truncate">{user.username}</p>
                         </div>
-                         <div>
-                            <p className="text-2xl font-black">{stats.days}</p>
-                            <p className="text-[10px] uppercase tracking-wider opacity-70">Hari Lapor</p>
+                        <div className="bg-slate-50 p-4 rounded-[20px] border border-slate-100">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">GENDER</p>
+                            <p className="text-sm font-bold text-slate-700">{user.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
                         </div>
                     </div>
-                </div>
-            </div>
+                 </div>
+             </div>
 
-            <div className="glass-card rounded-[28px] p-2 space-y-2 mb-6">
-                <div className="p-4 flex items-center gap-4 border-b border-slate-100 last:border-0">
-                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"><i className="fas fa-id-card"></i></div>
-                    <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Username / NISN</p>
-                        <p className="text-sm font-bold text-slate-700">{user.username}</p>
-                    </div>
-                </div>
-                <div className="p-4 flex items-center gap-4 border-b border-slate-100 last:border-0">
-                    <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500"><i className="fas fa-venus-mars"></i></div>
-                    <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Jenis Kelamin</p>
-                        <p className="text-sm font-bold text-slate-700">{user.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</p>
-                    </div>
-                </div>
-            </div>
+             <div className="space-y-3">
+                 <button onClick={() => Swal.fire('Tentang Aplikasi', 'Spansa Rama v2.1\nUPT SMPN 1 Pasuruan\nDeveloped by Tim IT', 'info')} className="w-full py-4 bg-white text-slate-600 font-bold rounded-[24px] border border-slate-200 hover:bg-slate-50 transition shadow-sm flex items-center justify-between px-6">
+                     <div className="flex items-center gap-3">
+                        <i className="fas fa-info-circle text-slate-400"></i>
+                        <span>Tentang Aplikasi</span>
+                     </div>
+                     <i className="fas fa-chevron-right text-slate-300 text-xs"></i>
+                 </button>
+                 
+                 <button onClick={onLogout} className="w-full py-4 bg-red-50 text-red-600 font-bold rounded-[24px] border border-red-100 hover:bg-red-100 transition shadow-sm flex items-center justify-center gap-2 mt-4">
+                     <i className="fas fa-sign-out-alt"></i> Keluar Akun
+                 </button>
+             </div>
 
-            <button onClick={() => {
-                Swal.fire({
-                    title: 'Keluar?',
-                    text: 'Yakin ingin log out dari aplikasi?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Ya, Keluar',
-                    cancelButtonText: 'Batal',
-                    confirmButtonColor: '#ef4444'
-                }).then(res => {
-                    if(res.isConfirmed) onLogout();
-                })
-            }} className="w-full py-4 bg-red-50 text-red-600 font-bold rounded-[24px] shadow-sm hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-                <i className="fas fa-sign-out-alt"></i> Log Out
-            </button>
-            
-            <p className="text-center text-[10px] text-slate-400 mt-6 font-bold">Spansa Rama v2.0</p>
+             <div className="mt-12 text-center opacity-30">
+                 <i className="fas fa-mosque text-4xl mb-2"></i>
+                 <p className="text-[10px] font-bold uppercase tracking-widest">Spansa Rama 2025</p>
+             </div>
         </div>
     );
 };

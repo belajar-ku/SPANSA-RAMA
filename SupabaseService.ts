@@ -183,8 +183,8 @@ export const SupabaseService = {
           const { data: logs, error: err2 } = await supabase.from('daily_logs').select('*').eq('date', date).in('user_id', students.map(s => s.id));
           if(err2) throw err2;
           
-          // 3. Merge
-          return students.map(s => {
+          // 3. Merge & Sort (Submitted First)
+          const result = students.map(s => {
               const log = logs?.find(l => l.user_id === s.id);
               return {
                   id: s.id,
@@ -195,7 +195,45 @@ export const SupabaseService = {
                   nilai: log?.total_points || 0
               };
           });
+
+          // Sorting: Submitted (true) comes before Not Submitted (false)
+          return result.sort((a, b) => Number(b.submitted) - Number(a.submitted));
+
       } catch(e) { console.error(e); return []; }
+  },
+
+  // [NEW] Get Literacy Answers for Correction
+  getLiterasiRecap: async (kelas: string, date: string) => {
+      try {
+          // 1. Get Students
+          const { data: students } = await supabase.from('users').select('id, name').eq('role', 'murid').eq('kelas', kelas).order('name');
+          if (!students) return { students: [], questions: [] };
+
+          // 2. Get Questions
+          const { data: material } = await supabase.from('literasi_materials').select('questions').eq('date', date).maybeSingle();
+          const questions = material?.questions || [];
+
+          // 3. Get Logs
+          const { data: logs } = await supabase.from('daily_logs').select('user_id, details').eq('date', date).in('user_id', students.map(s => s.id));
+
+          // 4. Merge
+          const data = students.map(s => {
+              const log = logs?.find(l => l.user_id === s.id);
+              const answers = log?.details?.literasiResponse || [];
+              const submitted = answers.length > 0 && answers.some((a: string) => a.trim() !== '');
+              return {
+                  id: s.id,
+                  name: s.name,
+                  submitted,
+                  answers
+              };
+          });
+
+          // Sort by submitted first
+          data.sort((a, b) => Number(b.submitted) - Number(a.submitted));
+
+          return { students: data, questions };
+      } catch (e) { console.error(e); return { students: [], questions: [] }; }
   },
 
   // --- LEADERBOARD (UPDATED: Filter by Gender) ---
@@ -226,6 +264,39 @@ export const SupabaseService = {
               ...u,
               points: scores[u.id] || 0
           })).sort((a, b) => b.points - a.points).slice(0, 50); // Top 50
+      } catch(e) { console.error(e); return []; }
+  },
+
+  // [NEW] Leaderboard Antar Kelas
+  getClassLeaderboard: async () => {
+      try {
+          // 1. Get all students with class
+          const { data: users, error: err1 } = await supabase.from('users').select('id, kelas').eq('role', 'murid').not('kelas', 'is', null);
+          if (err1 || !users) return [];
+
+          const userIds = users.map(u => u.id);
+          
+          // 2. Get all logs for these students
+          const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
+
+          const classScores: Record<string, number> = {};
+          
+          // Initialize logic
+          users.forEach(u => {
+              if(u.kelas && !classScores[u.kelas]) classScores[u.kelas] = 0;
+          });
+
+          // Sum Points
+          logs?.forEach(l => {
+             const u = users.find(user => user.id === l.user_id);
+             if (u && u.kelas) {
+                 classScores[u.kelas] = (classScores[u.kelas] || 0) + (l.total_points || 0);
+             }
+          });
+
+          return Object.entries(classScores)
+                .map(([className, points]) => ({ id: className, name: className, points, kelas: 'Kelas' }))
+                .sort((a, b) => b.points - a.points);
       } catch(e) { console.error(e); return []; }
   },
 
