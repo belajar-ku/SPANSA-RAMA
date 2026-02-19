@@ -94,7 +94,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                             'rel': 0,
                             'modestbranding': 1,
                             'playsinline': 1, 
-                            'mute': 1, // MUST BE MUTED FOR AUTOPLAY TO WORK ON MOBILE
+                            'mute': 0, // UNMUTED (Sound ON)
                             'origin': window.location.origin 
                         },
                         events: {
@@ -209,7 +209,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                            </div>
                        )}
                    </div>
-                   <div className="px-2 py-1 text-[10px] text-slate-400 text-center italic">Video otomatis diputar tanpa suara. Klik tombol volume di HP jika tersedia.</div>
+                   <div className="px-2 py-1 text-[10px] text-slate-400 text-center italic">Video akan otomatis diputar. Jika tidak, ketuk tombol play di atas.</div>
                </div>
 
                <div className={`glass-card p-6 rounded-[24px] transition-all duration-500 ${!videoFinished ? 'opacity-50 grayscale pointer-events-none select-none' : 'opacity-100'}`}>
