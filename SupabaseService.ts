@@ -173,6 +173,12 @@ export const SupabaseService = {
           if (d.sedekahDiri || d.sedekahRumah || d.sedekahMasyarakat) pts += 5;
           if (d.belajarTopik) pts += 5;
 
+          // [NEW] Literasi Points (10 Points)
+          // Only give points if answered AND not marked as 'Perbaiki'
+          if (d.literasiResponse && d.literasiResponse.length > 0 && d.literasiValidation !== 'Perbaiki') {
+              pts += 10;
+          }
+
           const payload = { ...log, total_points: pts };
           if (!payload.id) delete (payload as any).id;
 

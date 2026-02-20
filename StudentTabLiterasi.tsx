@@ -181,7 +181,8 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
             });
 
             if (response.text) {
-                return JSON.parse(response.text);
+                const cleanText = response.text.replace(/```json|```/g, '').trim();
+                return JSON.parse(cleanText);
             }
             return { valid: true };
 
@@ -217,13 +218,27 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
 
         Swal.fire({ title: 'Menyimpan...', didOpen: () => Swal.showLoading() });
         const log = await SupabaseService.getDailyLog(user.id, date);
-        let details = log?.details || {};
+        
+        // Clone details to avoid reference issues
+        let details = log?.details ? { ...log.details } : {};
         details.literasiResponse = answers;
+        
+        // RESET VALIDATION STATUS ON NEW SUBMISSION
+        delete details.literasiValidation; 
+
         const payload: DailyLog = {
-            user_id: user.id, date: date,
-            puasa_type: log?.puasa_type || 'tidak', total_points: 0,
+            user_id: user.id, 
+            date: date,
+            puasa_type: log?.puasa_type || 'tidak', 
+            total_points: 0,
             details: details as DailyLogDetails
         };
+
+        // Important: Pass ID if exists to ensure UPDATE works
+        if (log?.id) {
+            payload.id = log.id;
+        }
+
         const success = await SupabaseService.saveDailyLog(payload);
         if(success) {
             setSubmitted(true);
