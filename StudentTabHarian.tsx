@@ -220,7 +220,12 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
         }
     }
 
+    // FETCH LATEST LOG TO PRESERVE LITERASI
+    const existingLog = await SupabaseService.getDailyLog(user.id, selectedDate);
+    const existingDetails = existingLog?.details || {};
+
     const details: DailyLogDetails = {
+          ...existingDetails, // Preserve existing details (like literasiResponse)
           puasaStatus: puasaStatus as any, 
           alasanTidakPuasa, isHaid,
           sahurStatus: isMenstruasi ? '' : sahurStatus, 
@@ -233,7 +238,10 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
           tadarusNote: isMenstruasi ? '' : finalTadarusNote,
           sedekahDiri, sedekahRumah, sedekahMasyarakat,
           belajarMapel, belajarTopik,
-          is_draft: draftAction
+          is_draft: draftAction,
+          // Explicitly preserve literasi fields just in case spread didn't work as expected (though it should)
+          literasiResponse: existingDetails.literasiResponse || [],
+          literasiValidation: existingDetails.literasiValidation
     };
 
     const payload: DailyLog = {
@@ -243,6 +251,10 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
         total_points: 0,
         details: details
     };
+    
+    if (existingLog?.id) {
+        payload.id = existingLog.id;
+    }
     
     Swal.fire({ title: 'Menyimpan...', didOpen: () => Swal.showLoading() });
     const success = await SupabaseService.saveDailyLog(payload);

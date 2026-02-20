@@ -173,10 +173,10 @@ export const SupabaseService = {
           if (d.sedekahDiri || d.sedekahRumah || d.sedekahMasyarakat) pts += 5;
           if (d.belajarTopik) pts += 5;
 
-          // [NEW] Literasi Points (10 Points)
+          // [NEW] Literasi Points (100 Points)
           // Only give points if answered AND not marked as 'Perbaiki'
           if (d.literasiResponse && d.literasiResponse.length > 0 && d.literasiValidation !== 'Perbaiki') {
-              pts += 10;
+              pts += 100;
           }
 
           const payload = { ...log, total_points: pts };
@@ -202,13 +202,23 @@ export const SupabaseService = {
           if(err2) throw err2;
           
           // 3. Merge
+          const today = getWIBDate();
+          const isPastDate = date < today;
+
           const result = students.map(s => {
               const log = logs?.find(l => l.user_id === s.id);
+              
+              // AUTO-SUBMIT LOGIC: If date is in the past, treat draft as submitted
+              let isDraft = log?.details?.is_draft || false;
+              if (isPastDate && log) {
+                  isDraft = false; 
+              }
+
               return {
                   id: s.id,
                   name: s.name,
                   submitted: !!log,
-                  is_draft: log?.details?.is_draft || false,
+                  is_draft: isDraft,
                   puasa: log?.puasa_type || '-',
                   points: log?.total_points || 0,
                   nilai: log?.total_points || 0
@@ -281,29 +291,14 @@ export const SupabaseService = {
           let newPoints = log.total_points;
           if (status === 'Perbaiki') {
                // If previously Sesuai/None and had points, remove them.
-               // But simple way: just re-save using saveDailyLog logic but we need to inject the validation status into logic?
-               // Easier: Just subtract 10 if it was counted.
-               // But to be safe, let's just update the flag. The UI will show "Perbaiki".
-               // If we want to affect points immediately:
-               // We can't easily know if 10 points were from Literasi without re-calculating everything.
-               // Let's just update the details for now. The requirement says "berpengaruh pada poin murid".
-               // Let's do a simple check: if Perbaiki, reduce 10 points. If Sesuai, add 10 points (if not already added).
-               // BUT, saveDailyLog recalculates everything. 
-               // Let's just update details. The student will see "Perbaiki" and have to resubmit.
-               // When they resubmit, points will be recalculated.
-               // WAIT, if "dianggap belum mengerjakan", they lose points.
-               // So we should probably set literasiResponse to empty? No, they need to see their wrong answers.
-               // We will handle point deduction in saveDailyLog or here.
-               
-               // Let's manually adjust points here for immediate effect.
-               // Literasi is worth 10 points.
+               // Literasi is worth 100 points.
                if (log.details.literasiValidation !== 'Perbaiki') {
-                   newPoints = Math.max(0, newPoints - 10);
+                   newPoints = Math.max(0, newPoints - 100);
                }
           } else {
-               // If changing back to Sesuai from Perbaiki, add 10 points back
+               // If changing back to Sesuai from Perbaiki, add 100 points back
                if (log.details.literasiValidation === 'Perbaiki') {
-                   newPoints += 10;
+                   newPoints += 100;
                }
           }
 
