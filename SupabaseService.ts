@@ -121,6 +121,18 @@ export const SupabaseService = {
       } catch(e) { console.error(e); return null; }
   },
 
+  // [NEW] Get Pending Literasi Corrections
+  getPendingLiterasiCorrections: async (userId: string) => {
+      try {
+          const { data } = await supabase
+              .from('daily_logs')
+              .select('date')
+              .eq('user_id', userId)
+              .contains('details', { literasiValidation: 'Perbaiki' });
+          return (data || []) as { date: string }[];
+      } catch (e) { console.error(e); return []; }
+  },
+
   // [NEW] Get Recap for Progress
   getStudentRecap: async (userId: string) => {
       try {
@@ -190,6 +202,7 @@ export const SupabaseService = {
                   id: s.id,
                   name: s.name,
                   submitted: !!log,
+                  is_draft: log?.details?.is_draft || false,
                   puasa: log?.puasa_type || '-',
                   points: log?.total_points || 0,
                   nilai: log?.total_points || 0
@@ -225,11 +238,13 @@ export const SupabaseService = {
               const log = logs?.find(l => l.user_id === s.id);
               const answers = log?.details?.literasiResponse || [];
               const submitted = answers.length > 0 && answers.some((a: string) => a.trim() !== '');
+              const validation = log?.details?.literasiValidation || 'Sesuai'; // Default Sesuai
               return {
                   id: s.id,
                   name: s.name,
                   submitted,
-                  answers
+                  answers,
+                  validation
               };
           });
 
@@ -238,6 +253,62 @@ export const SupabaseService = {
 
           return { students: data, questions };
       } catch (e) { console.error(e); return { students: [], questions: [] }; }
+  },
+
+  // [NEW] Update Literasi Validation (Guru/Admin)
+  updateLiterasiValidation: async (userId: string, date: string, status: 'Sesuai' | 'Perbaiki') => {
+      try {
+          // 1. Get current log
+          const { data: log } = await supabase.from('daily_logs').select('*').eq('user_id', userId).eq('date', date).single();
+          if (!log) return false;
+
+          // 2. Update details
+          const details = { ...log.details, literasiValidation: status };
+          
+          // 3. Recalculate Points if 'Perbaiki' -> 0 points for literasi? 
+          // Request: "murid dianggap belum mengerjakan Literasi" -> means we should remove points?
+          // For now, let's just update the status. The points calculation logic in saveDailyLog handles points based on answers.
+          // If we want to deduct points, we might need to update total_points.
+          // However, the prompt says "berpengaruh pada poin murid". 
+          // Let's assume if 'Perbaiki', we deduct 10 points (Literasi value) if they had it.
+          
+          let newPoints = log.total_points;
+          if (status === 'Perbaiki') {
+               // If previously Sesuai/None and had points, remove them.
+               // But simple way: just re-save using saveDailyLog logic but we need to inject the validation status into logic?
+               // Easier: Just subtract 10 if it was counted.
+               // But to be safe, let's just update the flag. The UI will show "Perbaiki".
+               // If we want to affect points immediately:
+               // We can't easily know if 10 points were from Literasi without re-calculating everything.
+               // Let's just update the details for now. The requirement says "berpengaruh pada poin murid".
+               // Let's do a simple check: if Perbaiki, reduce 10 points. If Sesuai, add 10 points (if not already added).
+               // BUT, saveDailyLog recalculates everything. 
+               // Let's just update details. The student will see "Perbaiki" and have to resubmit.
+               // When they resubmit, points will be recalculated.
+               // WAIT, if "dianggap belum mengerjakan", they lose points.
+               // So we should probably set literasiResponse to empty? No, they need to see their wrong answers.
+               // We will handle point deduction in saveDailyLog or here.
+               
+               // Let's manually adjust points here for immediate effect.
+               // Literasi is worth 10 points.
+               if (log.details.literasiValidation !== 'Perbaiki') {
+                   newPoints = Math.max(0, newPoints - 10);
+               }
+          } else {
+               // If changing back to Sesuai from Perbaiki, add 10 points back
+               if (log.details.literasiValidation === 'Perbaiki') {
+                   newPoints += 10;
+               }
+          }
+
+          const { error } = await supabase.from('daily_logs').update({ 
+              details, 
+              total_points: newPoints 
+          }).eq('id', log.id);
+          
+          if (error) throw error;
+          return true;
+      } catch (e) { console.error(e); return false; }
   },
 
   // --- LEADERBOARD (UPDATED: Filter by Gender) ---

@@ -101,12 +101,20 @@ export const TabMonitoring = ({ currentUser }: { currentUser?: User }) => {
                                             </div>
                                             <div>
                                                 <p className="font-bold text-sm text-slate-700 line-clamp-1">{item.name}</p>
-                                                <p className="text-[10px] text-slate-500">{item.submitted ? '✅ Sudah Lapor' : '❌ Belum'}</p>
+                                                <p className="text-[10px] text-slate-500">
+                                                    {item.submitted 
+                                                        ? (item.is_draft ? '📝 Draft' : '✅ Sudah Lapor') 
+                                                        : '❌ Belum'}
+                                                </p>
                                             </div>
                                         </div>
                                         <div className="text-right shrink-0">
                                             {item.submitted ? (
-                                                <span className="text-xs font-black text-primary-600">{item.points} Poin</span>
+                                                item.is_draft ? (
+                                                    <span className="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-lg">Draft</span>
+                                                ) : (
+                                                    <span className="text-xs font-black text-primary-600">{item.points} Poin</span>
+                                                )
                                             ) : (
                                                 <span className="text-[10px] font-bold text-slate-300">-</span>
                                             )}
@@ -188,7 +196,33 @@ export const TabKoreksiLiterasi = ({ currentUser }: { currentUser?: User }) => {
                                             <p className="text-[10px] text-slate-400">{s.submitted ? 'Sudah Mengerjakan' : 'Belum Mengerjakan'}</p>
                                         </div>
                                     </div>
-                                    <i className={`fas fa-chevron-down text-slate-300 transition-transform ${isOpen ? 'rotate-180' : ''}`}></i>
+                                    
+                                    {/* Validation Dropdown */}
+                                    {s.submitted && (
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            <select 
+                                                className={`text-xs font-bold p-2 rounded-lg border outline-none ${s.validation === 'Perbaiki' ? 'bg-red-100 text-red-600 border-red-200' : 'bg-green-100 text-green-600 border-green-200'}`}
+                                                value={s.validation || 'Sesuai'}
+                                                onChange={async (e) => {
+                                                    const val = e.target.value as 'Sesuai' | 'Perbaiki';
+                                                    // Optimistic Update
+                                                    const newData = {...data};
+                                                    const studentIdx = newData.students.findIndex(st => st.id === s.id);
+                                                    if(studentIdx !== -1) {
+                                                        newData.students[studentIdx].validation = val;
+                                                        setData(newData);
+                                                    }
+                                                    
+                                                    await SupabaseService.updateLiterasiValidation(s.id, date, val);
+                                                }}
+                                            >
+                                                <option value="Sesuai">Sesuai</option>
+                                                <option value="Perbaiki">Perbaiki</option>
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <i className={`fas fa-chevron-down text-slate-300 transition-transform ${isOpen ? 'rotate-180' : ''} ml-2`}></i>
                                 </button>
 
                                 {isOpen && s.submitted && (

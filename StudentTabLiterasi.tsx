@@ -58,11 +58,25 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
             
             const log = await SupabaseService.getDailyLog(user.id, date);
             if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
-                setAnswers(log.details.literasiResponse);
-                setSubmitted(true);
-                setVideoFinished(true);
-                setVideoStarted(true);
-                setIsPlayerReady(true);
+                // If validation is 'Perbaiki', allow resubmission
+                if (log.details.literasiValidation === 'Perbaiki') {
+                    setAnswers(log.details.literasiResponse);
+                    setSubmitted(false); // Allow editing
+                    setVideoFinished(true); // Allow skipping video if already watched
+                    setVideoStarted(true);
+                    setIsPlayerReady(true);
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Perbaiki Jawaban',
+                        text: 'Guru meminta Anda memperbaiki jawaban literasi ini.',
+                    });
+                } else {
+                    setAnswers(log.details.literasiResponse);
+                    setSubmitted(true);
+                    setVideoFinished(true);
+                    setVideoStarted(true);
+                    setIsPlayerReady(true);
+                }
             } else {
                 setAnswers(new Array(mat.questions.length).fill(''));
                 setSubmitted(false);

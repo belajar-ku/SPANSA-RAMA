@@ -43,6 +43,7 @@ const Header = ({ user, activeTab }: { user: User, activeTab: string }) => (
 // --- Today Target Modal (NEW) ---
 const TodayTargetModal = ({ user, onClose }: { user: User, onClose: () => void }) => {
     const [log, setLog] = useState<DailyLog | null>(null);
+    const [pendingCorrections, setPendingCorrections] = useState<{ date: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const date = getWIBDate();
 
@@ -50,6 +51,10 @@ const TodayTargetModal = ({ user, onClose }: { user: User, onClose: () => void }
         const fetchLog = async () => {
             const data = await SupabaseService.getDailyLog(user.id, date);
             setLog(data);
+            
+            const pending = await SupabaseService.getPendingLiterasiCorrections(user.id);
+            setPendingCorrections(pending);
+
             setLoading(false);
         };
         fetchLog();
@@ -115,6 +120,19 @@ const TodayTargetModal = ({ user, onClose }: { user: User, onClose: () => void }
                         </div>
                     </div>
                 </div>
+
+                {/* NOTIFICATION FOR LITERASI CORRECTION */}
+                {pendingCorrections.map((item, idx) => (
+                    <div key={idx} className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl animate-pulse">
+                        <div className="flex items-center gap-3 mb-2">
+                            <i className="fas fa-exclamation-triangle text-red-500 text-xl"></i>
+                            <h4 className="font-black text-red-700 text-sm">PERHATIAN!</h4>
+                        </div>
+                        <p className="text-xs text-red-600 font-bold leading-relaxed">
+                            Anda harus Memperbaiki Jawaban Literasi Tanggal {item.date}. Jawaban sebelumnya dinilai kurang sesuai.
+                        </p>
+                    </div>
+                ))}
 
                 <button onClick={onClose} className="w-full py-4 bg-slate-800 text-white font-bold rounded-2xl shadow-lg hover:bg-slate-700 transition-transform active:scale-95">
                     Tutup & Lanjutkan

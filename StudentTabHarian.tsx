@@ -307,8 +307,13 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                <i className={`fas ${isDraft ? 'fa-edit' : 'fa-check'}`}></i>
            </div>
            
-           <h3 className="text-2xl font-black text-slate-800">{isDraft ? 'Draft Terkirim Sementara' : 'Laporan Terkirim'}</h3>
+           <h3 className="text-2xl font-black text-slate-800">{isDraft ? 'Draft Tersimpan Sementara' : 'Laporan Terkirim'}</h3>
            <p className="text-slate-500 text-sm mt-2">Data tanggal <strong>{selectedDate}</strong> {isDraft ? 'belum dikirim final.' : 'sudah tersimpan.'}</p>
+           {isDraft && (
+               <div className="mt-4 p-3 bg-blue-50 text-blue-700 text-xs font-bold rounded-xl border border-blue-100 max-w-xs text-center">
+                   <i className="fas fa-info-circle mr-1"></i> Anda Harus Mengakses lagi pada Pukul 20.00 WIB untuk Mengirim Jawaban
+               </div>
+           )}
            
            <button onClick={() => setSubmitted(false)} className="mt-8 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-full font-bold text-sm shadow-md hover:bg-slate-50">
                {isDraft ? 'Edit Laporan Ini' : 'Edit Laporan Ini'}

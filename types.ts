@@ -58,6 +58,7 @@ export interface DailyLogDetails {
     belajarMapel?: string;
     belajarTopik?: string;
     literasiResponse?: string[];
+    literasiValidation?: 'Sesuai' | 'Perbaiki'; // NEW: Validation status from teacher
     
     is_draft?: boolean; // NEW: To distinguish between saved draft and final submission
 }
