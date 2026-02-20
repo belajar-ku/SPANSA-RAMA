@@ -3,6 +3,7 @@ import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
 import { User, LiterasiMaterial, DailyLog, DailyLogDetails, getWIBDate } from './types';
 import { toTitleCase } from './App';
+import { GoogleGenAI } from "@google/genai";
 
 declare global {
   interface Window {
@@ -131,10 +132,75 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
         }
     };
 
+    const validateAnswersWithAI = async (questions: string[], answers: string[]) => {
+        try {
+            const apiKey = process.env.GEMINI_API_KEY;
+            if (!apiKey) {
+                console.warn("Gemini API Key missing, skipping validation.");
+                return { valid: true };
+            }
+
+            const ai = new GoogleGenAI({ apiKey });
+            
+            const pairs = questions.map((q, i) => ({ q, a: answers[i] }));
+            
+            const prompt = `
+            Bertindaklah sebagai guru yang tegas. Periksa jawaban siswa berikut untuk tugas literasi.
+            
+            Kriteria GAGAL (valid: false):
+            1. Jawaban asal-asalan (contoh: ".....", "aaaaa", "wkwkwk", "gatau", "tidak tahu").
+            2. Jawaban terlalu pendek yang tidak menjawab soal (contoh: "ya", "tidak" padahal pertanyaan butuh penjelasan).
+            3. Jawaban tidak nyambung sama sekali dengan pertanyaan.
+            4. Jawaban copy-paste dari pertanyaan.
+            5. Jawaban yang hanya mengulang satu kata berulang kali.
+
+            Data:
+            ${JSON.stringify(pairs)}
+
+            Output JSON only: { "valid": boolean, "reason": "Pesan error untuk siswa jika false (Singkat, Padat, Jelas, Bahasa Indonesia)" }
+            `;
+
+            const response = await ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: prompt,
+                config: { responseMimeType: "application/json" }
+            });
+
+            if (response.text) {
+                return JSON.parse(response.text);
+            }
+            return { valid: true };
+
+        } catch (error) {
+            console.error("AI Validation Error:", error);
+            return { valid: true }; // Allow submission if AI fails
+        }
+    };
+
     const handleSave = async () => {
         if (answers.some(a => !a.trim())) {
             return Swal.fire('Belum Lengkap', 'Jawab semua pertanyaan ya.', 'warning');
         }
+
+        // AI Validation Step
+        Swal.fire({ 
+            title: 'Memvalidasi Jawaban...', 
+            text: 'Mohon tunggu, AI sedang mengecek kualitas jawabanmu...', 
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading() 
+        });
+
+        const validation = await validateAnswersWithAI(material?.questions || [], answers);
+
+        if (!validation.valid) {
+            return Swal.fire({
+                icon: 'error',
+                title: 'Jawaban Ditolak',
+                text: validation.reason || 'Jawabanmu terdeteksi asal-asalan. Mohon perbaiki dengan sungguh-sungguh.',
+                confirmButtonText: 'Perbaiki'
+            });
+        }
+
         Swal.fire({ title: 'Menyimpan...', didOpen: () => Swal.showLoading() });
         const log = await SupabaseService.getDailyLog(user.id, date);
         let details = log?.details || {};
