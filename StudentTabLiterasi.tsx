@@ -221,6 +221,29 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
         
         // Clone details to avoid reference issues
         let details = log?.details ? { ...log.details } : {};
+        
+        // Explicitly preserve existing journal fields if they exist
+        // This is redundant with spread but safer against accidental overwrites
+        if (log?.details) {
+            details.puasaStatus = log.details.puasaStatus;
+            details.alasanTidakPuasa = log.details.alasanTidakPuasa;
+            details.isHaid = log.details.isHaid;
+            details.sahurStatus = log.details.sahurStatus;
+            details.sahurLokasi = log.details.sahurLokasi;
+            details.sahurWaktu = log.details.sahurWaktu;
+            details.bukaStatus = log.details.bukaStatus;
+            details.sholatStatus = log.details.sholatStatus;
+            details.sunahStatus = log.details.sunahStatus;
+            details.tadarusStatus = log.details.tadarusStatus;
+            details.tadarusNote = log.details.tadarusNote;
+            details.sedekahDiri = log.details.sedekahDiri;
+            details.sedekahRumah = log.details.sedekahRumah;
+            details.sedekahMasyarakat = log.details.sedekahMasyarakat;
+            details.belajarMapel = log.details.belajarMapel;
+            details.belajarTopik = log.details.belajarTopik;
+            details.is_draft = log.details.is_draft;
+        }
+
         details.literasiResponse = answers;
         
         // RESET VALIDATION STATUS ON NEW SUBMISSION
@@ -229,8 +252,9 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
         const payload: DailyLog = {
             user_id: user.id, 
             date: date,
+            // Preserve existing puasa_type if available, otherwise default
             puasa_type: log?.puasa_type || 'tidak', 
-            total_points: 0,
+            total_points: log?.total_points || 0, // Preserve existing points initially, will be recalculated by saveDailyLog
             details: details as DailyLogDetails
         };
 
