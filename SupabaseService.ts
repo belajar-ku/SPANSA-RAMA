@@ -417,8 +417,7 @@ export const SupabaseService = {
           });
 
           // 3. Get all logs and Aggregate
-          // MENGGUNAKAN 2025 AGAR DATA TES HARI INI MUNCUL (Jika setting 2026, data hari ini tidak muncul)
-          const START_DATE = '2025-02-18'; 
+          const START_DATE = '2026-02-18'; 
           const END_DATE = getWIBDate();
 
           // Removed .in('user_id', userIds) to prevent URL length error if many students

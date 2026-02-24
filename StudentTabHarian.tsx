@@ -357,7 +357,20 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                      </div>
                 </div>
                 <div>
-                     <input type="date" className="bg-primary-50 text-primary-700 font-bold text-xs px-3 py-2.5 rounded-xl border border-primary-100 outline-none" value={selectedDate} max={getWIBDate()} onChange={(e) => setSelectedDate(e.target.value)} />
+                     <input 
+                        type="date" 
+                        className="bg-primary-50 text-primary-700 font-bold text-xs px-3 py-2.5 rounded-xl border border-primary-100 outline-none" 
+                        value={selectedDate} 
+                        min="2026-02-18" 
+                        max={getWIBDate()} 
+                        onChange={(e) => {
+                            if (e.target.value < '2026-02-18') {
+                                Swal.fire('Info', 'Pengisian jurnal dimulai tanggal 18 Februari 2026', 'info');
+                                return;
+                            }
+                            setSelectedDate(e.target.value);
+                        }} 
+                     />
                 </div>
             </div>
             {isPreRamadan && <div className="bg-blue-50 text-blue-600 text-[10px] font-bold text-center py-1 rounded-b-[20px]"><i className="fas fa-info-circle mr-1"></i> Pra-Ramadan (Latihan)</div>}
