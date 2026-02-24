@@ -114,11 +114,9 @@ export const SupabaseService = {
 
   // --- DAILY LOGS (Harian) ---
   getDailyLog: async (userId: string, date: string) => {
-      try {
-          const { data, error } = await supabase.from('daily_logs').select('*').eq('user_id', userId).eq('date', date).maybeSingle();
-          if(error) throw error;
-          return data as DailyLog | null;
-      } catch(e) { console.error(e); return null; }
+      const { data, error } = await supabase.from('daily_logs').select('*').eq('user_id', userId).eq('date', date).maybeSingle();
+      if(error) throw error;
+      return data as DailyLog | null;
   },
 
   // [NEW] Get Pending Literasi Corrections
@@ -269,6 +267,60 @@ export const SupabaseService = {
 
           return { students: data, questions };
       } catch (e) { console.error(e); return { students: [], questions: [] }; }
+  },
+
+  // [NEW] Get Rekap Absensi (Harian & Literasi) for Range
+  getRekapAbsensi: async (kelas: string, startDate: string, endDate: string) => {
+      try {
+          // 1. Get Students
+          const { data: students, error: err1 } = await supabase
+              .from('users')
+              .select('id, name, gender')
+              .eq('role', 'murid')
+              .eq('kelas', kelas)
+              .order('name');
+          
+          if (err1 || !students) return [];
+
+          // 2. Get Logs in Range
+          const { data: logs, error: err2 } = await supabase
+              .from('daily_logs')
+              .select('user_id, date, details, total_points')
+              .gte('date', startDate)
+              .lte('date', endDate)
+              .in('user_id', students.map(s => s.id));
+
+          if (err2) throw err2;
+
+          // 3. Process Data
+          return students.map(s => {
+              const studentLogs = logs?.filter(l => l.user_id === s.id) || [];
+              const logMap: Record<string, { harian: boolean, literasi: boolean, points: number }> = {};
+
+              studentLogs.forEach(l => {
+                  const d = l.details || {};
+                  // Check if any Harian field is filled (Puasa, Sholat, etc.)
+                  // We assume if puasaStatus or sholatStatus exists, they touched the journal.
+                  const hasHarian = !!(d.puasaStatus || d.sholatStatus || d.bukaStatus || d.sahurStatus);
+                  
+                  const hasLiterasi = d.literasiResponse && d.literasiResponse.length > 0 && d.literasiResponse.some((a: string) => a.trim() !== '');
+                  
+                  logMap[l.date] = {
+                      harian: hasHarian,
+                      literasi: hasLiterasi,
+                      points: l.total_points || 0
+                  };
+              });
+
+              return {
+                  id: s.id,
+                  name: s.name,
+                  gender: s.gender,
+                  logs: logMap
+              };
+          });
+
+      } catch (e) { console.error(e); return []; }
   },
 
   // [NEW] Update Literasi Validation (Guru/Admin)

@@ -192,6 +192,16 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
              setSubmitted(false);
          }
          setLoading(false);
+     }).catch(err => {
+         console.error("Failed to load daily log:", err);
+         Swal.fire({
+             icon: 'error',
+             title: 'Gagal Memuat Data',
+             text: 'Terjadi kesalahan koneksi. Silakan coba lagi.',
+             confirmButtonText: 'Muat Ulang',
+         }).then(() => {
+             window.location.reload();
+         });
      });
 
      SupabaseService.getRamadanTarget(user.id).then(target => {

@@ -110,11 +110,10 @@ export const TabMonitoring = ({ currentUser }: { currentUser?: User }) => {
                                         </div>
                                         <div className="text-right shrink-0">
                                             {item.submitted ? (
-                                                item.is_draft ? (
-                                                    <span className="text-xs font-bold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-lg">Draft</span>
-                                                ) : (
+                                                <div className="flex flex-col items-end">
                                                     <span className="text-xs font-black text-primary-600">{item.points} Poin</span>
-                                                )
+                                                    {item.is_draft && <span className="text-[9px] font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded">Draft</span>}
+                                                </div>
                                             ) : (
                                                 <span className="text-[10px] font-bold text-slate-300">-</span>
                                             )}
@@ -510,6 +509,267 @@ export const TabAdminUsers = () => {
                     </div>
                 ))}
             </div>
+        </div>
+    );
+};
+
+// --- Tab Rekap Absensi (NEW) ---
+export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
+    const defaultClass = (currentUser?.role === 'guru' && currentUser?.kelas) ? currentUser.kelas : '7A';
+    const [kelas, setKelas] = useState(defaultClass);
+    
+    // Default range: Last 7 days
+    const today = new Date();
+    const lastWeek = new Date(today);
+    lastWeek.setDate(today.getDate() - 6);
+    
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    const [startDate, setStartDate] = useState(formatDate(lastWeek));
+    const [endDate, setEndDate] = useState(formatDate(today));
+    
+    const [data, setData] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'points', direction: 'asc' | 'desc' } | null>(null);
+
+    const isWaliKelas = currentUser?.role === 'guru' && !!currentUser?.kelas;
+
+    const loadData = async () => {
+        setLoading(true);
+        const res = await SupabaseService.getRekapAbsensi(kelas, startDate, endDate);
+        
+        // Pre-calculate total points for sorting
+        const processedData = res.map((s: any) => {
+            let totalPoints = 0;
+            const dateRange = getDatesInRange(startDate, endDate);
+            dateRange.forEach(d => {
+                const dStr = dateString(d);
+                const log = s.logs[dStr];
+                if (log) totalPoints += (log.points || 0);
+            });
+            return { ...s, totalPoints };
+        });
+
+        setData(processedData);
+        setLoading(false);
+    };
+
+    const handleSort = (key: 'name' | 'points') => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedData = [...data].sort((a, b) => {
+        if (!sortConfig) return 0;
+        
+        if (sortConfig.key === 'name') {
+            if (a.name < b.name) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (a.name > b.name) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        } else if (sortConfig.key === 'points') {
+            if (a.totalPoints < b.totalPoints) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (a.totalPoints > b.totalPoints) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        }
+        return 0;
+    });
+
+    // Generate array of dates for table header
+    const getDatesInRange = (start: string, end: string) => {
+        const dates = [];
+        let curr = new Date(start);
+        const last = new Date(end);
+        while (curr <= last) {
+            dates.push(new Date(curr));
+            curr.setDate(curr.getDate() + 1);
+        }
+        return dates;
+    };
+
+    const dateRange = getDatesInRange(startDate, endDate);
+
+    // Format date for header (e.g., "18 Feb")
+    const formatHeaderDate = (d: Date) => {
+        return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    };
+
+    const dateString = (d: Date) => d.toISOString().split('T')[0];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const handleExport = () => {
+        if (data.length === 0) {
+            Swal.fire('Info', 'Tidak ada data untuk diexport', 'info');
+            return;
+        }
+
+        // 1. Build Header Row
+        // Format: No, Nama, L/P, [Date1 Harian], [Date1 Literasi], ..., Total Poin
+        let csvContent = "No,Nama,L/P";
+        dateRange.forEach(d => {
+            const dateStr = formatHeaderDate(d);
+            csvContent += `,${dateStr} (Harian),${dateStr} (Literasi)`;
+        });
+        csvContent += ",Total Poin\n";
+
+        // 2. Build Data Rows
+        data.forEach((s, idx) => {
+            let row = `${idx + 1},"${s.name}",${s.gender}`;
+            let totalPoints = 0;
+            
+            dateRange.forEach(d => {
+                const dStr = dateString(d);
+                const log = s.logs[dStr];
+                const hasLog = !!log;
+                if (hasLog) totalPoints += (log.points || 0);
+                
+                // Harian Status
+                let harianStatus = '-';
+                if (hasLog) harianStatus = log.harian ? 'v' : 'x';
+                else if (dStr < todayStr) harianStatus = 'x';
+                
+                // Literasi Status
+                let literasiStatus = '-';
+                if (hasLog) literasiStatus = log.literasi ? 'v' : (log.harian ? 'x' : '-');
+                else if (dStr < todayStr) literasiStatus = 'x';
+
+                row += `,${harianStatus},${literasiStatus}`;
+            });
+            row += `,${totalPoints}`;
+            csvContent += row + "\n";
+        });
+
+        // 3. Create Download Link
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Rekap_Absensi_Kelas_${kelas}_${startDate}_${endDate}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <div className="p-6 pb-28 animate-slide-up">
+            <div className="glass-card bg-gradient-to-r from-cyan-500 to-blue-600 rounded-[24px] p-6 text-white mb-6 shadow-xl text-center">
+                <i className="fas fa-table text-4xl mb-2 opacity-80"></i>
+                <h2 className="text-xl font-bold">Rekapitulasi Absensi</h2>
+                <p className="text-xs opacity-90">Pantau Harian & Literasi dalam rentang waktu</p>
+            </div>
+
+            <div className="glass-card p-4 rounded-[24px] mb-6 flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Dari Tanggal</label>
+                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white" />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Sampai Tanggal</label>
+                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white" />
+                    </div>
+                </div>
+                
+                <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Kelas</label>
+                        <select 
+                            value={kelas} 
+                            onChange={e => setKelas(e.target.value)} 
+                            disabled={isWaliKelas}
+                            className={`w-full p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white ${isWaliKelas ? 'opacity-70 cursor-not-allowed bg-slate-100' : ''}`}
+                        >
+                            {CLASSES.map(c => <option key={c} value={c}>Kelas {c}</option>)}
+                        </select>
+                    </div>
+                    <button onClick={loadData} className="px-4 py-3 bg-primary-600 text-white font-bold rounded-xl shadow-md hover:bg-primary-700 transition-colors">
+                        Tampilkan
+                    </button>
+                    <button onClick={handleExport} className="px-4 py-3 bg-green-600 text-white font-bold rounded-xl shadow-md hover:bg-green-700 transition-colors">
+                        <i className="fas fa-file-excel mr-2"></i> Export
+                    </button>
+                </div>
+            </div>
+
+            {loading ? <div className="p-10 text-center text-slate-500"><i className="fas fa-circle-notch fa-spin mr-2"></i> Memuat data...</div> : (
+                <div className="glass-card rounded-[24px] overflow-hidden border border-slate-200">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-xs text-left text-slate-700">
+                            <thead className="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th rowSpan={2} className="px-3 py-2 font-bold border-r border-slate-200 sticky left-0 bg-slate-50 z-10 w-32 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('name')}>
+                                        Nama {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center w-10">L/P</th>
+                                    {dateRange.map((d, i) => (
+                                        <th key={i} colSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center min-w-[80px]">
+                                            {formatHeaderDate(d)}
+                                        </th>
+                                    ))}
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-yellow-50 text-yellow-700 border-l border-slate-200 cursor-pointer hover:bg-yellow-100" onClick={() => handleSort('points')}>
+                                        Total Poin {sortConfig?.key === 'points' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    {dateRange.map((_d, i) => (
+                                        <React.Fragment key={i}>
+                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-blue-50 text-blue-600 w-10">Har</th>
+                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-pink-50 text-pink-600 w-10">Lit</th>
+                                        </React.Fragment>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {sortedData.map((s) => {
+                                    let totalPoints = 0;
+                                    return (
+                                    <tr key={s.id} className="hover:bg-slate-50">
+                                        <td className="px-3 py-2 font-bold border-r border-slate-100 sticky left-0 bg-white z-10 truncate max-w-[120px]">{s.name}</td>
+                                        <td className="px-2 py-2 text-center border-r border-slate-100 font-bold">{s.gender}</td>
+                                        {dateRange.map((d, i) => {
+                                            const dStr = dateString(d);
+                                            const log = s.logs[dStr];
+                                            
+                                            const hasLog = !!log;
+                                            const harian = log?.harian;
+                                            const literasi = log?.literasi;
+                                            if (hasLog) totalPoints += (log.points || 0);
+
+                                            const isPast = dStr < todayStr;
+                                            
+                                            return (
+                                                <React.Fragment key={i}>
+                                                    <td className="px-1 py-2 text-center border-r border-slate-100">
+                                                        {hasLog ? (
+                                                            harian ? <i className="fas fa-check-square text-blue-500 text-sm"></i> : <i className="fas fa-times text-red-300 font-bold"></i>
+                                                        ) : (isPast ? <i className="fas fa-times text-red-300 font-bold"></i> : <span className="text-slate-300">-</span>)}
+                                                    </td>
+                                                    <td className="px-1 py-2 text-center border-r border-slate-100">
+                                                        {hasLog ? (
+                                                            literasi ? <i className="fas fa-check-square text-pink-500 text-sm"></i> : <i className="fas fa-times text-red-300 font-bold"></i>
+                                                        ) : (isPast ? <i className="fas fa-times text-red-300 font-bold"></i> : <span className="text-slate-300">-</span>)}
+                                                    </td>
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                        <td className="px-2 py-2 text-center font-bold bg-yellow-50 text-yellow-700 border-l border-slate-100">
+                                            {totalPoints}
+                                        </td>
+                                    </tr>
+                                    );
+                                })}
+                                {data.length === 0 && (
+                                    <tr>
+                                        <td colSpan={2 + (dateRange.length * 2)} className="p-6 text-center text-slate-400">Tidak ada data.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -48,40 +48,50 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
 
     useEffect(() => {
         const init = async () => {
-            setLoading(true);
-            setVideoFinished(false); 
-            setVideoStarted(false);
-            setIsPlayerReady(false);
+            try {
+                setLoading(true);
+                setVideoFinished(false); 
+                setVideoStarted(false);
+                setIsPlayerReady(false);
 
-            const mat = await SupabaseService.getLiterasiMaterial(date);
-            setMaterial(mat);
-            
-            const log = await SupabaseService.getDailyLog(user.id, date);
-            if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
-                // If validation is 'Perbaiki', allow resubmission
-                if (log.details.literasiValidation === 'Perbaiki') {
-                    setAnswers(log.details.literasiResponse);
-                    setSubmitted(false); // Allow editing
-                    setVideoFinished(true); // Allow skipping video if already watched
-                    setVideoStarted(true);
-                    setIsPlayerReady(true);
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Perbaiki Jawaban',
-                        text: 'Guru meminta Anda memperbaiki jawaban literasi ini.',
-                    });
+                const mat = await SupabaseService.getLiterasiMaterial(date);
+                setMaterial(mat);
+                
+                const log = await SupabaseService.getDailyLog(user.id, date);
+                if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
+                    // If validation is 'Perbaiki', allow resubmission
+                    if (log.details.literasiValidation === 'Perbaiki') {
+                        setAnswers(log.details.literasiResponse);
+                        setSubmitted(false); // Allow editing
+                        setVideoFinished(true); // Allow skipping video if already watched
+                        setVideoStarted(true);
+                        setIsPlayerReady(true);
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Perbaiki Jawaban',
+                            text: 'Guru meminta Anda memperbaiki jawaban literasi ini.',
+                        });
+                    } else {
+                        setAnswers(log.details.literasiResponse);
+                        setSubmitted(true);
+                        setVideoFinished(true);
+                        setVideoStarted(true);
+                        setIsPlayerReady(true);
+                    }
                 } else {
-                    setAnswers(log.details.literasiResponse);
-                    setSubmitted(true);
-                    setVideoFinished(true);
-                    setVideoStarted(true);
-                    setIsPlayerReady(true);
+                    setAnswers(new Array(mat.questions.length).fill(''));
+                    setSubmitted(false);
                 }
-            } else {
-                setAnswers(new Array(mat.questions.length).fill(''));
-                setSubmitted(false);
+                setLoading(false);
+            } catch (error) {
+                console.error("Failed to load literasi:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Memuat',
+                    text: 'Terjadi kesalahan koneksi. Silakan refresh.',
+                    confirmButtonText: 'Refresh'
+                }).then(() => window.location.reload());
             }
-            setLoading(false);
         };
         init();
     }, [user.id, date]);

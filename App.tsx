@@ -9,7 +9,7 @@ import { TabMateri } from './StudentTabMateri';
 import { TabProfile } from './StudentTabProfile';
 import { TabLeaderboard } from './StudentTabLeaderboard';
 import { TabProgress } from './StudentTabProgress';
-import { TabAdminUsers, TabAdminData, TabMonitoring, TabKoreksiLiterasi } from './AdminTabs';
+import { TabAdminUsers, TabAdminData, TabMonitoring, TabKoreksiLiterasi, TabRekapAbsensi } from './AdminTabs';
 
 // --- Helper: Title Case (EYD) ---
 export const toTitleCase = (str: string) => {
@@ -49,13 +49,17 @@ const TodayTargetModal = ({ user, onClose }: { user: User, onClose: () => void }
 
     useEffect(() => {
         const fetchLog = async () => {
-            const data = await SupabaseService.getDailyLog(user.id, date);
-            setLog(data);
-            
-            const pending = await SupabaseService.getPendingLiterasiCorrections(user.id);
-            setPendingCorrections(pending);
-
-            setLoading(false);
+            try {
+                const data = await SupabaseService.getDailyLog(user.id, date);
+                setLog(data);
+                
+                const pending = await SupabaseService.getPendingLiterasiCorrections(user.id);
+                setPendingCorrections(pending);
+            } catch (error) {
+                console.error("Failed to fetch today's log:", error);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchLog();
     }, [user.id, date]);
@@ -398,6 +402,8 @@ const App = () => {
     }
   }, [user]);
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   const handleLogin = (u: User) => {
       setUser(u);
       if (u.role === 'admin' || u.role === 'guru') setActiveTab('monitoring');
@@ -445,29 +451,107 @@ const App = () => {
         <Header user={user} activeTab={activeTab} />
         {showTargetModal && <TargetModal user={user} onClose={handleCloseTargetModal} initialData={targetData} />}
         {showTodayModal && <TodayTargetModal user={user} onClose={() => setShowTodayModal(false)} />}
-
-        <main className="max-w-md mx-auto relative z-10">
-            {activeTab === 'harian' && <TabHarian user={user} initialDate={selectedDateForEdit} />}
-            {activeTab === 'literasi' && <TabLiterasi user={user} initialDate={selectedDateForEdit} />}
-            {activeTab === 'progress' && <TabProgress user={user} onEdit={handleEditLog} />}
-            {activeTab === 'leaderboard' && <TabLeaderboard user={user} />}
-            {activeTab === 'materi' && <TabMateri />}
-            {activeTab === 'profile' && <TabProfile user={user} onLogout={handleLogout} />}
+        
+        {/* Responsive Container: Full width for Admin/Guru on Desktop, Mobile width for Murid */}
+        <div className={`mx-auto relative z-10 ${user.role === 'murid' ? 'max-w-md' : 'max-w-md md:max-w-7xl md:px-8 md:flex md:gap-8'}`}>
             
-            {/* ADMIN / GURU TABS */}
+            {/* DESKTOP SIDEBAR (Admin/Guru Only) */}
             {(user.role === 'admin' || user.role === 'guru') && (
-                <>
-                    {activeTab === 'monitoring' && <TabMonitoring currentUser={user} />}
-                    {/* Guru only sees users/data if admin allows, but per request we hide it for Guru */}
-                    {activeTab === 'users' && user.role === 'admin' && <TabAdminUsers />}
-                    {activeTab === 'data' && user.role === 'admin' && <TabAdminData />}
-                    {activeTab === 'koreksi' && <TabKoreksiLiterasi currentUser={user} />}
-                </>
-            )}
-        </main>
+                <aside className={`hidden md:block shrink-0 pt-8 sticky top-0 h-screen overflow-y-auto transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
+                    <div className="bg-white rounded-[24px] shadow-xl p-4 border border-slate-100 h-[calc(100vh-4rem)] flex flex-col">
+                        
+                        {/* Toggle Button */}
+                        <button 
+                            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                            className="absolute -right-3 top-12 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center shadow-md text-slate-500 hover:text-primary-600 z-10"
+                        >
+                            <i className={`fas fa-chevron-${isSidebarCollapsed ? 'right' : 'left'} text-xs`}></i>
+                        </button>
 
-        {/* NEW FLOATING DOCK NAVIGATION */}
-        <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] h-16 nav-dock rounded-[24px] z-50 px-2">
+                        <div className={`flex items-center gap-3 mb-8 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+                            <div className="w-10 h-10 rounded-full bg-primary-50 flex items-center justify-center text-primary-600 font-bold text-lg shrink-0">
+                                {user.name.charAt(0)}
+                            </div>
+                            {!isSidebarCollapsed && (
+                                <div className="overflow-hidden">
+                                    <h3 className="font-bold text-slate-800 text-sm line-clamp-1">{user.name}</h3>
+                                    <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{user.role}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-2 flex-1">
+                             {user.role === 'guru' ? (
+                                <>
+                                    <button onClick={() => setActiveTab('monitoring')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'monitoring' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Monitoring">
+                                        <i className="fas fa-chart-pie w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Monitoring'}
+                                    </button>
+                                    <button onClick={() => setActiveTab('rekap')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'rekap' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Rekap Absensi">
+                                        <i className="fas fa-table w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Rekap Absensi'}
+                                    </button>
+                                    <button onClick={() => setActiveTab('koreksi')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'koreksi' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Koreksi Literasi">
+                                        <i className="fas fa-clipboard-check w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Koreksi Literasi'}
+                                    </button>
+                                    <button onClick={() => setActiveTab('profile')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'profile' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Profil Saya">
+                                        <i className="fas fa-user w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Profil Saya'}
+                                    </button>
+                                </>
+                             ) : (
+                                <>
+                                    <button onClick={() => setActiveTab('monitoring')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'monitoring' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Monitoring">
+                                        <i className="fas fa-chart-pie w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Monitoring'}
+                                    </button>
+                                    <button onClick={() => setActiveTab('rekap')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'rekap' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Rekap Absensi">
+                                        <i className="fas fa-table w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Rekap Absensi'}
+                                    </button>
+                                    <button onClick={() => setActiveTab('koreksi')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'koreksi' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Koreksi Literasi">
+                                        <i className="fas fa-clipboard-check w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Koreksi Literasi'}
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-2"></div>
+                                    <button onClick={() => setActiveTab('users')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'users' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Data User">
+                                        <i className="fas fa-users w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Data User'}
+                                    </button>
+                                    <button onClick={() => setActiveTab('data')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'data' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Data Aplikasi">
+                                        <i className="fas fa-database w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Data Aplikasi'}
+                                    </button>
+                                    <button onClick={() => setActiveTab('profile')} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'profile' ? 'bg-primary-50 text-primary-600' : 'text-slate-500 hover:bg-slate-50'} ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Profil Saya">
+                                        <i className="fas fa-user w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Profil Saya'}
+                                    </button>
+                                </>
+                             )}
+                        </div>
+                        
+                        <button onClick={handleLogout} className={`w-full text-left p-3 rounded-xl font-bold text-sm flex items-center gap-3 text-red-500 hover:bg-red-50 mt-4 ${isSidebarCollapsed ? 'justify-center' : ''}`} title="Keluar">
+                            <i className="fas fa-sign-out-alt w-6 text-center text-lg"></i> {!isSidebarCollapsed && 'Keluar'}
+                        </button>
+                    </div>
+                </aside>
+            )}
+
+            <div className="flex-1 min-w-0">
+                {activeTab === 'harian' && <TabHarian user={user} initialDate={selectedDateForEdit} />}
+                {activeTab === 'literasi' && <TabLiterasi user={user} initialDate={selectedDateForEdit} />}
+                {activeTab === 'progress' && <TabProgress user={user} onEdit={handleEditLog} />}
+                {activeTab === 'leaderboard' && <TabLeaderboard user={user} />}
+                {activeTab === 'materi' && <TabMateri />}
+                {activeTab === 'profile' && <TabProfile user={user} onLogout={handleLogout} />}
+                
+                {/* ADMIN / GURU TABS */}
+                {(user.role === 'admin' || user.role === 'guru') && (
+                    <>
+                        {activeTab === 'monitoring' && <TabMonitoring currentUser={user} />}
+                        {activeTab === 'rekap' && <TabRekapAbsensi currentUser={user} />}
+                        {/* Guru only sees users/data if admin allows, but per request we hide it for Guru */}
+                        {activeTab === 'users' && user.role === 'admin' && <TabAdminUsers />}
+                        {activeTab === 'data' && user.role === 'admin' && <TabAdminData />}
+                        {activeTab === 'koreksi' && <TabKoreksiLiterasi currentUser={user} />}
+                    </>
+                )}
+            </div>
+        </div>
+
+        {/* NEW FLOATING DOCK NAVIGATION (Mobile Only for Admin/Guru, All for Murid) */}
+        <nav className={`fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-[400px] h-16 nav-dock rounded-[24px] z-50 px-2 ${user.role !== 'murid' ? 'md:hidden' : ''}`}>
              <div className="flex justify-between items-center h-full w-full">
                  {user.role === 'murid' ? (
                     <>
@@ -481,6 +565,7 @@ const App = () => {
                  ) : user.role === 'guru' ? (
                     <>
                         <TabBtn id="monitoring" icon="fa-chart-pie" />
+                        <TabBtn id="rekap" icon="fa-table" />
                         <TabBtn id="koreksi" icon="fa-clipboard-check" />
                         <TabBtn id="profile" icon="fa-user" />
                     </>
@@ -488,6 +573,7 @@ const App = () => {
                     /* ADMIN VIEW */
                     <>
                         <TabBtn id="monitoring" icon="fa-chart-pie" />
+                        <TabBtn id="rekap" icon="fa-table" />
                         <TabBtn id="koreksi" icon="fa-clipboard-check" />
                         <TabBtn id="users" icon="fa-users" />
                         <TabBtn id="data" icon="fa-database" />
