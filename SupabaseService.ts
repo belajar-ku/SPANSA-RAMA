@@ -295,7 +295,7 @@ export const SupabaseService = {
           // 3. Get Total Points Since Feb 18, 2026 (for Average Calculation)
           const { data: allLogs } = await supabase
               .from('daily_logs')
-              .select('user_id, date, total_points')
+              .select('user_id, date, total_points, details')
               .gte('date', '2026-02-18')
               .in('user_id', students.map(s => s.id));
 
@@ -311,10 +311,16 @@ export const SupabaseService = {
               allLogs.forEach(l => {
                   totalPointsMap[l.user_id] = (totalPointsMap[l.user_id] || 0) + (l.total_points || 0);
                   
-                  // Count days filled until yesterday
+                  // Count days filled until yesterday (MUST BE BOTH HARIAN AND LITERASI)
                   if (l.date <= yesterdayStr) {
-                      if (!daysFilledMap[l.user_id]) daysFilledMap[l.user_id] = new Set();
-                      daysFilledMap[l.user_id].add(l.date);
+                      const d = l.details || {};
+                      const hasHarian = !!(d.puasaStatus || d.sholatStatus || d.bukaStatus || d.sahurStatus);
+                      const hasLiterasi = d.literasiResponse && Array.isArray(d.literasiResponse) && d.literasiResponse.length > 0 && d.literasiResponse.some((a: any) => typeof a === 'string' && a.trim() !== '');
+
+                      if (hasHarian && hasLiterasi) {
+                          if (!daysFilledMap[l.user_id]) daysFilledMap[l.user_id] = new Set();
+                          daysFilledMap[l.user_id].add(l.date);
+                      }
                   }
               });
           }
@@ -370,13 +376,26 @@ export const SupabaseService = {
       try {
           const START_DATE = '2026-02-18';
           const finalEndDate = endDate || getWIBDate();
-          const { count } = await supabase
+          const { data } = await supabase
             .from('daily_logs')
-            .select('*', { count: 'exact', head: true })
+            .select('date, details')
             .eq('user_id', userId)
             .gte('date', START_DATE)
             .lte('date', finalEndDate);
-          return count || 0;
+          
+          if (!data) return 0;
+
+          const uniqueDays = new Set<string>();
+          data.forEach(log => {
+              const d = log.details || {};
+              const hasHarian = !!(d.puasaStatus || d.sholatStatus || d.bukaStatus || d.sahurStatus);
+              const hasLiterasi = d.literasiResponse && Array.isArray(d.literasiResponse) && d.literasiResponse.length > 0 && d.literasiResponse.some((a: any) => typeof a === 'string' && a.trim() !== '');
+              
+              if (hasHarian && hasLiterasi) {
+                  uniqueDays.add(log.date);
+              }
+          });
+          return uniqueDays.size;
       } catch { return 0; }
   },
 
@@ -435,13 +454,29 @@ export const SupabaseService = {
 
           const userIds = users.map(u => u.id);
           
-          // 2. Get points sum
-          const { data: logs } = await supabase.from('daily_logs').select('user_id, total_points').in('user_id', userIds);
+          // 2. Get points sum with pagination and date filter
+          const START_DATE = '2026-02-18';
+          let allLogs: any[] = [];
+          let from = 0;
+          const step = 1000;
 
-          if (!logs) return users.map(u => ({ ...u, points: 0 }));
+          while(true) {
+             const { data: logs, error } = await supabase
+                .from('daily_logs')
+                .select('user_id, total_points')
+                .in('user_id', userIds)
+                .gte('date', START_DATE)
+                .range(from, from + step - 1);
+             
+             if (error) break;
+             if (!logs || logs.length === 0) break;
+             allLogs = [...allLogs, ...logs];
+             if (logs.length < step) break;
+             from += step;
+          }
 
           const scores: Record<string, number> = {};
-          logs.forEach(l => {
+          allLogs.forEach(l => {
               scores[l.user_id] = (scores[l.user_id] || 0) + (l.total_points || 0);
           });
 
@@ -477,16 +512,30 @@ export const SupabaseService = {
           const START_DATE = '2026-02-18'; 
           const END_DATE = getWIBDate();
 
-          // Removed .in('user_id', userIds) to prevent URL length error if many students
-          // Added .limit(10000) to ensure we get enough logs (default is 1000)
-          const { data: logs } = await supabase
-              .from('daily_logs')
-              .select('user_id, total_points')
-              .gte('date', START_DATE)
-              .lte('date', END_DATE)
-              .limit(10000);
+          let allLogs: any[] = [];
+          let from = 0;
+          const step = 1000;
+          
+          while (true) {
+              const { data: logs, error } = await supabase
+                  .from('daily_logs')
+                  .select('user_id, total_points')
+                  .gte('date', START_DATE)
+                  .lte('date', END_DATE)
+                  .range(from, from + step - 1);
+              
+              if (error) {
+                  console.error('Error fetching logs batch:', error);
+                  break;
+              }
+              if (!logs || logs.length === 0) break;
+              
+              allLogs = [...allLogs, ...logs];
+              if (logs.length < step) break;
+              from += step;
+          }
 
-          logs?.forEach(l => {
+          allLogs.forEach(l => {
               const kelas = userClassMap.get(l.user_id);
               if (kelas && classStats[kelas]) {
                   // Murni Penjumlahan Poin
@@ -548,7 +597,8 @@ export const SupabaseService = {
             startRamadhanV1: data?.value?.startRamadhanV1 || '',
             startRamadhanV2: data?.value?.startRamadhanV2 || '',
             idulFitri: data?.value?.idulFitri || '',
-            minRerataPoin: data?.value?.minRerataPoin || 210, // Default 210
+            minRerataPoin: data?.value?.minRerataPoin || 210, // Default 210 (Laki-laki)
+            minRerataPoinP: data?.value?.minRerataPoinP || 210, // Default 210 (Perempuan)
             statusBelowMin: data?.value?.statusBelowMin || 'BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA',
             statusAboveMin: data?.value?.statusAboveMin || 'MENERIMA KARTU PESERTA'
         };
@@ -558,6 +608,7 @@ export const SupabaseService = {
               startRamadhanV2: '', 
               idulFitri: '', 
               minRerataPoin: 210,
+              minRerataPoinP: 210,
               statusBelowMin: 'BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA',
               statusAboveMin: 'MENERIMA KARTU PESERTA'
           }; 

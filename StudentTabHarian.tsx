@@ -54,7 +54,8 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const [classRank, setClassRank] = useState<any>(null);
   const [studentTotalPoints, setStudentTotalPoints] = useState(0);
   const [studentDaysFilled, setStudentDaysFilled] = useState(0);
-  const [minRerata, setMinRerata] = useState(210); // Default 210
+  const [minRerata, setMinRerata] = useState(210); // Default 210 (L)
+  const [minRerataP, setMinRerataP] = useState(210); // Default 210 (P)
   const [statusBelowMin, setStatusBelowMin] = useState('BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA');
   const [statusAboveMin, setStatusAboveMin] = useState('MENERIMA KARTU PESERTA');
   const [prayerTimes, setPrayerTimes] = useState<any>(null);
@@ -153,6 +154,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
 
      SupabaseService.getGlobalSettings().then(settings => {
         if (settings.minRerataPoin) setMinRerata(settings.minRerataPoin);
+        if (settings.minRerataPoinP) setMinRerataP(settings.minRerataPoinP);
         if (settings.statusBelowMin) setStatusBelowMin(settings.statusBelowMin);
         if (settings.statusAboveMin) setStatusAboveMin(settings.statusAboveMin);
      });
@@ -167,9 +169,10 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
          
          SupabaseService.getStudentTotalPoints(user.id).then(setStudentTotalPoints);
          
-         const d = new Date();
+         const todayWIB = getWIBDate();
+         const d = new Date(todayWIB);
          d.setDate(d.getDate() - 1);
-         const yesterdayStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+         const yesterdayStr = d.toISOString().split('T')[0];
          SupabaseService.getStudentDaysFilled(user.id, yesterdayStr).then(setStudentDaysFilled);
      }
 
@@ -456,14 +459,15 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                             // If today is day 1 (diffDays=1), required is 0.
                             const requiredDays = Math.max(0, diffDays - 1);
                             const isFilledEveryDay = studentDaysFilled >= requiredDays;
-                            const isQualified = average >= minRerata && isFilledEveryDay;
+                            const threshold = user.gender === 'P' ? minRerataP : minRerata;
+                            const isQualified = average >= threshold && isFilledEveryDay;
                             
                             return (
                                 <div className={`text-[10px] font-bold px-3 py-2 rounded-lg text-center leading-relaxed ${isQualified ? 'bg-emerald-500 text-white shadow-lg' : 'bg-rose-500/90 text-white shadow-lg'}`}>
                                     {isQualified ? statusAboveMin : (
                                         <>
                                             {statusBelowMin}
-                                            {!isFilledEveryDay && average >= minRerata && (
+                                            {!isFilledEveryDay && average >= threshold && (
                                                 <div className="mt-1 pt-1 border-t border-white/20 text-[9px] opacity-90">
                                                     Anda tidak mengisi setiap hari
                                                 </div>

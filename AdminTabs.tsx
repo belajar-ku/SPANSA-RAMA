@@ -531,13 +531,15 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'points', direction: 'asc' | 'desc' } | null>(null);
-    const [minRerata, setMinRerata] = useState(210); // Default 210
+    const [minRerata, setMinRerata] = useState(210); // Default 210 (L)
+    const [minRerataP, setMinRerataP] = useState(210); // Default 210 (P)
 
     const isWaliKelas = currentUser?.role === 'guru' && !!currentUser?.kelas;
 
     useEffect(() => {
         SupabaseService.getGlobalSettings().then(settings => {
             if (settings.minRerataPoin) setMinRerata(settings.minRerataPoin);
+            if (settings.minRerataPoinP) setMinRerataP(settings.minRerataPoinP);
         });
     }, []);
 
@@ -659,7 +661,8 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
             const averagePoints = averageVal.toFixed(1);
             
             const isFilledEveryDay = (s.daysFilled || 0) >= requiredDays;
-            const keterangan = (averageVal >= minRerata && isFilledEveryDay) ? 'L' : 'TL';
+            const threshold = s.gender === 'P' ? minRerataP : minRerata;
+            const keterangan = (averageVal >= threshold && isFilledEveryDay) ? 'L' : 'TL';
 
             row += `,${s.totalPoints},${averagePoints},${keterangan}`;
             csvContent += row + "\n";
@@ -793,7 +796,8 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                                         {(() => {
                                             const averageVal = (s.totalPointsAllTime || 0) / daysCount;
                                             const isFilledEveryDay = (s.daysFilled || 0) >= requiredDays;
-                                            const isLulus = averageVal >= minRerata && isFilledEveryDay;
+                                            const threshold = s.gender === 'P' ? minRerataP : minRerata;
+                                            const isLulus = averageVal >= threshold && isFilledEveryDay;
                                             return (
                                                 <td className={`px-2 py-2 text-center font-bold border-l border-slate-100 ${isLulus ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                                                     {isLulus ? 'L' : 'TL'}
@@ -883,12 +887,21 @@ export const TabAdminData = () => {
                         <input type="date" className="w-full p-3 rounded-xl border" value={globalSettings.idulFitri} onChange={e => setGlobalSettings({...globalSettings, idulFitri: e.target.value})} />
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-slate-500">Batas Minimal Rerata Poin (Lulus)</label>
+                        <label className="text-xs font-bold text-slate-500">Batas Minimal Rerata Poin (Laki-laki)</label>
                         <input 
                             type="number" 
                             className="w-full p-3 rounded-xl border font-bold text-emerald-600" 
                             value={globalSettings.minRerataPoin || 210} 
                             onChange={e => setGlobalSettings({...globalSettings, minRerataPoin: parseInt(e.target.value) || 0})} 
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500">Batas Minimal Rerata Poin (Perempuan)</label>
+                        <input 
+                            type="number" 
+                            className="w-full p-3 rounded-xl border font-bold text-pink-600" 
+                            value={globalSettings.minRerataPoinP || 210} 
+                            onChange={e => setGlobalSettings({...globalSettings, minRerataPoinP: parseInt(e.target.value) || 0})} 
                         />
                         <p className="text-[10px] text-slate-400 mt-1">Siswa dengan rerata poin di atas nilai ini akan mendapatkan status "L" (Lulus).</p>
                     </div>
