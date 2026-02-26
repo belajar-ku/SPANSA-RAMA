@@ -295,14 +295,27 @@ export const SupabaseService = {
           // 3. Get Total Points Since Feb 18, 2026 (for Average Calculation)
           const { data: allLogs } = await supabase
               .from('daily_logs')
-              .select('user_id, total_points')
+              .select('user_id, date, total_points')
               .gte('date', '2026-02-18')
               .in('user_id', students.map(s => s.id));
 
           const totalPointsMap: Record<string, number> = {};
+          const daysFilledMap: Record<string, Set<string>> = {};
+          
+          // Calculate yesterday's date for filtering
+          const d = new Date();
+          d.setDate(d.getDate() - 1);
+          const yesterdayStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+
           if (allLogs) {
               allLogs.forEach(l => {
                   totalPointsMap[l.user_id] = (totalPointsMap[l.user_id] || 0) + (l.total_points || 0);
+                  
+                  // Count days filled until yesterday
+                  if (l.date <= yesterdayStr) {
+                      if (!daysFilledMap[l.user_id]) daysFilledMap[l.user_id] = new Set();
+                      daysFilledMap[l.user_id].add(l.date);
+                  }
               });
           }
 
@@ -331,7 +344,8 @@ export const SupabaseService = {
                   name: s.name,
                   gender: s.gender,
                   logs: logMap,
-                  totalPointsAllTime: totalPointsMap[s.id] || 0
+                  totalPointsAllTime: totalPointsMap[s.id] || 0,
+                  daysFilled: daysFilledMap[s.id] ? daysFilledMap[s.id].size : 0
               };
           });
 

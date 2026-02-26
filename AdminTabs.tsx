@@ -613,6 +613,7 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
     todayDate.setHours(0,0,0,0);
     const diffTime = Math.max(0, todayDate.getTime() - startCalcDate.getTime());
     const daysCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    const requiredDays = Math.max(0, daysCount - 1);
 
     const handleExport = () => {
         if (data.length === 0) {
@@ -656,7 +657,9 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
             // Calculate Average based on ALL points since Feb 18
             const averageVal = (s.totalPointsAllTime || 0) / daysCount;
             const averagePoints = averageVal.toFixed(1);
-            const keterangan = averageVal >= minRerata ? 'L' : 'TL';
+            
+            const isFilledEveryDay = (s.daysFilled || 0) >= requiredDays;
+            const keterangan = (averageVal >= minRerata && isFilledEveryDay) ? 'L' : 'TL';
 
             row += `,${s.totalPoints},${averagePoints},${keterangan}`;
             csvContent += row + "\n";
@@ -787,9 +790,16 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                                         <td className="px-2 py-2 text-center font-bold bg-indigo-50 text-indigo-700 border-l border-slate-100">
                                             {((s.totalPointsAllTime || 0) / daysCount).toFixed(1)}
                                         </td>
-                                        <td className={`px-2 py-2 text-center font-bold border-l border-slate-100 ${((s.totalPointsAllTime || 0) / daysCount) >= minRerata ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                                            {((s.totalPointsAllTime || 0) / daysCount) >= minRerata ? 'L' : 'TL'}
-                                        </td>
+                                        {(() => {
+                                            const averageVal = (s.totalPointsAllTime || 0) / daysCount;
+                                            const isFilledEveryDay = (s.daysFilled || 0) >= requiredDays;
+                                            const isLulus = averageVal >= minRerata && isFilledEveryDay;
+                                            return (
+                                                <td className={`px-2 py-2 text-center font-bold border-l border-slate-100 ${isLulus ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                                    {isLulus ? 'L' : 'TL'}
+                                                </td>
+                                            );
+                                        })()}
                                     </tr>
                                     );
                                 })}
