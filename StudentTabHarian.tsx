@@ -54,6 +54,8 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const [classRank, setClassRank] = useState<any>(null);
   const [studentTotalPoints, setStudentTotalPoints] = useState(0);
   const [minRerata, setMinRerata] = useState(210); // Default 210
+  const [statusBelowMin, setStatusBelowMin] = useState('BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA');
+  const [statusAboveMin, setStatusAboveMin] = useState('MENERIMA KARTU PESERTA');
   const [prayerTimes, setPrayerTimes] = useState<any>(null);
 
   // Form States
@@ -150,6 +152,8 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
 
      SupabaseService.getGlobalSettings().then(settings => {
         if (settings.minRerataPoin) setMinRerata(settings.minRerataPoin);
+        if (settings.statusBelowMin) setStatusBelowMin(settings.statusBelowMin);
+        if (settings.statusAboveMin) setStatusAboveMin(settings.statusAboveMin);
      });
 
      if (user.kelas) {
@@ -446,7 +450,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                             
                             return (
                                 <div className={`text-[10px] font-bold px-3 py-2 rounded-lg text-center leading-relaxed ${isQualified ? 'bg-emerald-500 text-white shadow-lg' : 'bg-rose-500/90 text-white shadow-lg'}`}>
-                                    {isQualified ? 'MENERIMA KARTU PESERTA' : 'BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA'}
+                                    {isQualified ? statusAboveMin : statusBelowMin}
                                 </div>
                             );
                         })()}

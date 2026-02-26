@@ -880,7 +880,27 @@ export const TabAdminData = () => {
                             value={globalSettings.minRerataPoin || 210} 
                             onChange={e => setGlobalSettings({...globalSettings, minRerataPoin: parseInt(e.target.value) || 0})} 
                         />
-                        <p className="text-[10px] text-slate-400 mt-1">Siswa dengan rerata poin di atas nilai ini akan mendapatkan status "L" (Lulus) dan "MENERIMA KARTU PESERTA".</p>
+                        <p className="text-[10px] text-slate-400 mt-1">Siswa dengan rerata poin di atas nilai ini akan mendapatkan status "L" (Lulus).</p>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500">Status di Bawah Batas Minimal</label>
+                        <input 
+                            type="text" 
+                            className="w-full p-3 rounded-xl border text-red-600 font-bold" 
+                            value={globalSettings.statusBelowMin || ''} 
+                            placeholder="Contoh: BELUM MEMENUHI SYARAT..."
+                            onChange={e => setGlobalSettings({...globalSettings, statusBelowMin: e.target.value})} 
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500">Status di Atas Batas Minimal</label>
+                        <input 
+                            type="text" 
+                            className="w-full p-3 rounded-xl border text-emerald-600 font-bold" 
+                            value={globalSettings.statusAboveMin || ''} 
+                            placeholder="Contoh: MENERIMA KARTU PESERTA"
+                            onChange={e => setGlobalSettings({...globalSettings, statusAboveMin: e.target.value})} 
+                        />
                     </div>
                     <button onClick={saveGlobal} className="w-full py-3 bg-primary-600 text-white font-bold rounded-xl shadow-md">Simpan Pengaturan</button>
                 </div>

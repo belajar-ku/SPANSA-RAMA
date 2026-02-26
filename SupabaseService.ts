@@ -520,9 +520,20 @@ export const SupabaseService = {
             startRamadhanV1: data?.value?.startRamadhanV1 || '',
             startRamadhanV2: data?.value?.startRamadhanV2 || '',
             idulFitri: data?.value?.idulFitri || '',
-            minRerataPoin: data?.value?.minRerataPoin || 210 // Default 210
+            minRerataPoin: data?.value?.minRerataPoin || 210, // Default 210
+            statusBelowMin: data?.value?.statusBelowMin || 'BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA',
+            statusAboveMin: data?.value?.statusAboveMin || 'MENERIMA KARTU PESERTA'
         };
-      } catch { return { startRamadhanV1: '', startRamadhanV2: '', idulFitri: '', minRerataPoin: 210 }; }
+      } catch { 
+          return { 
+              startRamadhanV1: '', 
+              startRamadhanV2: '', 
+              idulFitri: '', 
+              minRerataPoin: 210,
+              statusBelowMin: 'BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA',
+              statusAboveMin: 'MENERIMA KARTU PESERTA'
+          }; 
+      }
   },
   saveGlobalSettings: async (settings: GlobalSettings) => {
       await supabase.from('app_settings').upsert({ key: 'global_settings', value: settings });
