@@ -12,8 +12,10 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
     useEffect(() => {
         const load = async () => {
             const data = await SupabaseService.getStudentRecap(user.id);
+            // Filter dates >= 2026-02-18
+            const filteredData = data.filter(d => d.date >= '2026-02-18');
             // Sort by date descending (newest first)
-            const sortedData = data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            const sortedData = filteredData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setRecap(sortedData);
             setLoading(false);
         };

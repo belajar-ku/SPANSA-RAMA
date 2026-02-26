@@ -297,7 +297,20 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                  <div className="pl-4">
                      <p className="text-[10px] font-bold text-slate-400 uppercase">TANGGAL MATERI</p>
                  </div>
-                 <input type="date" className="bg-slate-100 text-slate-700 font-bold text-xs px-3 py-2 rounded-xl border-none outline-none" value={date} max={getWIBDate()} onChange={(e) => setDate(e.target.value)} />
+                 <input 
+                    type="date" 
+                    className="bg-slate-100 text-slate-700 font-bold text-xs px-3 py-2 rounded-xl border-none outline-none" 
+                    value={date} 
+                    min="2026-02-18"
+                    max={getWIBDate()} 
+                    onChange={(e) => {
+                        if (e.target.value < '2026-02-18') {
+                            Swal.fire('Info', 'Pengisian literasi dimulai tanggal 18 Februari 2026', 'info');
+                            return;
+                        }
+                        setDate(e.target.value);
+                    }} 
+                 />
             </div>
 
             <div className="space-y-6">
