@@ -352,6 +352,20 @@ export const SupabaseService = {
       } catch { return 0; }
   },
 
+  getStudentDaysFilled: async (userId: string, endDate?: string) => {
+      try {
+          const START_DATE = '2026-02-18';
+          const finalEndDate = endDate || getWIBDate();
+          const { count } = await supabase
+            .from('daily_logs')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .gte('date', START_DATE)
+            .lte('date', finalEndDate);
+          return count || 0;
+      } catch { return 0; }
+  },
+
   // [NEW] Update Literasi Validation (Guru/Admin)
   updateLiterasiValidation: async (userId: string, date: string, status: 'Sesuai' | 'Perbaiki') => {
       try {

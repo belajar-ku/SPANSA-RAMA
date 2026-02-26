@@ -53,6 +53,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const [targetStartDate, setTargetStartDate] = useState('');
   const [classRank, setClassRank] = useState<any>(null);
   const [studentTotalPoints, setStudentTotalPoints] = useState(0);
+  const [studentDaysFilled, setStudentDaysFilled] = useState(0);
   const [minRerata, setMinRerata] = useState(210); // Default 210
   const [statusBelowMin, setStatusBelowMin] = useState('BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA');
   const [statusAboveMin, setStatusAboveMin] = useState('MENERIMA KARTU PESERTA');
@@ -165,6 +166,11 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
          });
          
          SupabaseService.getStudentTotalPoints(user.id).then(setStudentTotalPoints);
+         
+         const d = new Date();
+         d.setDate(d.getDate() - 1);
+         const yesterdayStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+         SupabaseService.getStudentDaysFilled(user.id, yesterdayStr).then(setStudentDaysFilled);
      }
 
      SupabaseService.getDailyLog(user.id, selectedDate).then(data => {
@@ -446,11 +452,24 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
                             
                             const average = studentTotalPoints / diffDays;
-                            const isQualified = average >= minRerata;
+                            // Check if filled every day until yesterday (so required is diffDays - 1)
+                            // If today is day 1 (diffDays=1), required is 0.
+                            const requiredDays = Math.max(0, diffDays - 1);
+                            const isFilledEveryDay = studentDaysFilled >= requiredDays;
+                            const isQualified = average >= minRerata && isFilledEveryDay;
                             
                             return (
                                 <div className={`text-[10px] font-bold px-3 py-2 rounded-lg text-center leading-relaxed ${isQualified ? 'bg-emerald-500 text-white shadow-lg' : 'bg-rose-500/90 text-white shadow-lg'}`}>
-                                    {isQualified ? statusAboveMin : statusBelowMin}
+                                    {isQualified ? statusAboveMin : (
+                                        <>
+                                            {statusBelowMin}
+                                            {!isFilledEveryDay && average >= minRerata && (
+                                                <div className="mt-1 pt-1 border-t border-white/20 text-[9px] opacity-90">
+                                                    Anda tidak mengisi setiap hari
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             );
                         })()}
