@@ -531,14 +531,21 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'points', direction: 'asc' | 'desc' } | null>(null);
+    const [minRerata, setMinRerata] = useState(210); // Default 210
 
     const isWaliKelas = currentUser?.role === 'guru' && !!currentUser?.kelas;
+
+    useEffect(() => {
+        SupabaseService.getGlobalSettings().then(settings => {
+            if (settings.minRerataPoin) setMinRerata(settings.minRerataPoin);
+        });
+    }, []);
 
     const loadData = async () => {
         setLoading(true);
         const res = await SupabaseService.getRekapAbsensi(kelas, startDate, endDate);
         
-        // Pre-calculate total points for sorting
+        // Pre-calculate total points for sorting (Displayed Range)
         const processedData = res.map((s: any) => {
             let totalPoints = 0;
             const dateRange = getDatesInRange(startDate, endDate);
@@ -599,6 +606,14 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
     const dateString = (d: Date) => d.toISOString().split('T')[0];
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // Calculate Days for Average
+    const startCalcDate = new Date('2026-02-18');
+    const todayDate = new Date(getWIBDate());
+    startCalcDate.setHours(0,0,0,0);
+    todayDate.setHours(0,0,0,0);
+    const diffTime = Math.max(0, todayDate.getTime() - startCalcDate.getTime());
+    const daysCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
     const handleExport = () => {
         if (data.length === 0) {
             Swal.fire('Info', 'Tidak ada data untuk diexport', 'info');
@@ -606,13 +621,13 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
         }
 
         // 1. Build Header Row
-        // Format: No, Nama, L/P, [Date1 Harian], [Date1 Literasi], ..., Total Poin
+        // Format: No, Nama, L/P, [Date1 Harian], [Date1 Literasi], ..., Total Poin, Rerata Poin, Keterangan
         let csvContent = "No,Nama,L/P";
         dateRange.forEach(d => {
             const dateStr = formatHeaderDate(d);
             csvContent += `,${dateStr} (Harian),${dateStr} (Literasi)`;
         });
-        csvContent += ",Total Poin\n";
+        csvContent += ",Total Poin,Rerata Poin,Keterangan\n";
 
         // 2. Build Data Rows
         data.forEach((s, idx) => {
@@ -637,7 +652,13 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
 
                 row += `,${harianStatus},${literasiStatus}`;
             });
-            row += `,${totalPoints}`;
+            
+            // Calculate Average based on ALL points since Feb 18
+            const averageVal = (s.totalPointsAllTime || 0) / daysCount;
+            const averagePoints = averageVal.toFixed(1);
+            const keterangan = averageVal >= minRerata ? 'L' : 'TL';
+
+            row += `,${s.totalPoints},${averagePoints},${keterangan}`;
             csvContent += row + "\n";
         });
 
@@ -646,7 +667,7 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `Rekap_Absensi_Kelas_${kelas}_${startDate}_${endDate}.csv`);
+        link.setAttribute("download", `Rekapitulasi_Kelas_${kelas}_${startDate}_${endDate}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -656,7 +677,7 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
         <div className="p-6 pb-28 animate-slide-up">
             <div className="glass-card bg-gradient-to-r from-cyan-500 to-blue-600 rounded-[24px] p-6 text-white mb-6 shadow-xl text-center">
                 <i className="fas fa-table text-4xl mb-2 opacity-80"></i>
-                <h2 className="text-xl font-bold">Rekapitulasi Absensi</h2>
+                <h2 className="text-xl font-bold">Rekapitulasi</h2>
                 <p className="text-xs opacity-90">Pantau Harian & Literasi dalam rentang waktu</p>
             </div>
 
@@ -711,6 +732,12 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                                     <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-yellow-50 text-yellow-700 border-l border-slate-200 cursor-pointer hover:bg-yellow-100" onClick={() => handleSort('points')}>
                                         Total Poin {sortConfig?.key === 'points' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                     </th>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-indigo-50 text-indigo-700 border-l border-slate-200">
+                                        Rerata
+                                    </th>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-emerald-50 text-emerald-700 border-l border-slate-200">
+                                        Ket
+                                    </th>
                                 </tr>
                                 <tr>
                                     {dateRange.map((_d, i) => (
@@ -756,6 +783,12 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                                         })}
                                         <td className="px-2 py-2 text-center font-bold bg-yellow-50 text-yellow-700 border-l border-slate-100">
                                             {totalPoints}
+                                        </td>
+                                        <td className="px-2 py-2 text-center font-bold bg-indigo-50 text-indigo-700 border-l border-slate-100">
+                                            {((s.totalPointsAllTime || 0) / daysCount).toFixed(1)}
+                                        </td>
+                                        <td className={`px-2 py-2 text-center font-bold border-l border-slate-100 ${((s.totalPointsAllTime || 0) / daysCount) >= minRerata ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                            {((s.totalPointsAllTime || 0) / daysCount) >= minRerata ? 'L' : 'TL'}
                                         </td>
                                     </tr>
                                     );
@@ -839,7 +872,17 @@ export const TabAdminData = () => {
                         <label className="text-xs font-bold text-slate-500">Idul Fitri</label>
                         <input type="date" className="w-full p-3 rounded-xl border" value={globalSettings.idulFitri} onChange={e => setGlobalSettings({...globalSettings, idulFitri: e.target.value})} />
                     </div>
-                    <button onClick={saveGlobal} className="w-full py-3 bg-primary-600 text-white font-bold rounded-xl shadow-md">Simpan Tanggal</button>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500">Batas Minimal Rerata Poin (Lulus)</label>
+                        <input 
+                            type="number" 
+                            className="w-full p-3 rounded-xl border font-bold text-emerald-600" 
+                            value={globalSettings.minRerataPoin || 210} 
+                            onChange={e => setGlobalSettings({...globalSettings, minRerataPoin: parseInt(e.target.value) || 0})} 
+                        />
+                        <p className="text-[10px] text-slate-400 mt-1">Siswa dengan rerata poin di atas nilai ini akan mendapatkan status "L" (Lulus) dan "MENERIMA KARTU PESERTA".</p>
+                    </div>
+                    <button onClick={saveGlobal} className="w-full py-3 bg-primary-600 text-white font-bold rounded-xl shadow-md">Simpan Pengaturan</button>
                 </div>
             </div>
 

@@ -292,7 +292,21 @@ export const SupabaseService = {
 
           if (err2) throw err2;
 
-          // 3. Process Data
+          // 3. Get Total Points Since Feb 18, 2026 (for Average Calculation)
+          const { data: allLogs } = await supabase
+              .from('daily_logs')
+              .select('user_id, total_points')
+              .gte('date', '2026-02-18')
+              .in('user_id', students.map(s => s.id));
+
+          const totalPointsMap: Record<string, number> = {};
+          if (allLogs) {
+              allLogs.forEach(l => {
+                  totalPointsMap[l.user_id] = (totalPointsMap[l.user_id] || 0) + (l.total_points || 0);
+              });
+          }
+
+          // 4. Process Data
           return students.map(s => {
               const studentLogs = logs?.filter(l => l.user_id === s.id) || [];
               const logMap: Record<string, { harian: boolean, literasi: boolean, points: number }> = {};
@@ -316,11 +330,26 @@ export const SupabaseService = {
                   id: s.id,
                   name: s.name,
                   gender: s.gender,
-                  logs: logMap
+                  logs: logMap,
+                  totalPointsAllTime: totalPointsMap[s.id] || 0
               };
           });
 
       } catch (e) { console.error(e); return []; }
+  },
+
+  // [NEW] Get Student Total Points Since Feb 18, 2026
+  getStudentTotalPoints: async (userId: string) => {
+      try {
+          const { data } = await supabase
+              .from('daily_logs')
+              .select('total_points')
+              .eq('user_id', userId)
+              .gte('date', '2026-02-18');
+          
+          if (!data) return 0;
+          return data.reduce((sum, l) => sum + (l.total_points || 0), 0);
+      } catch { return 0; }
   },
 
   // [NEW] Update Literasi Validation (Guru/Admin)
@@ -487,8 +516,13 @@ export const SupabaseService = {
   getGlobalSettings: async () => {
       try {
         const { data } = await supabase.from('app_settings').select('value').eq('key', 'global_settings').maybeSingle();
-        return data?.value || { startRamadhanV1: '', startRamadhanV2: '', idulFitri: '' };
-      } catch { return { startRamadhanV1: '', startRamadhanV2: '', idulFitri: '' }; }
+        return {
+            startRamadhanV1: data?.value?.startRamadhanV1 || '',
+            startRamadhanV2: data?.value?.startRamadhanV2 || '',
+            idulFitri: data?.value?.idulFitri || '',
+            minRerataPoin: data?.value?.minRerataPoin || 210 // Default 210
+        };
+      } catch { return { startRamadhanV1: '', startRamadhanV2: '', idulFitri: '', minRerataPoin: 210 }; }
   },
   saveGlobalSettings: async (settings: GlobalSettings) => {
       await supabase.from('app_settings').upsert({ key: 'global_settings', value: settings });

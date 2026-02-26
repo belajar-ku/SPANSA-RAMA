@@ -52,6 +52,8 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
   const [currentTime, setCurrentTime] = useState(new Date());
   const [targetStartDate, setTargetStartDate] = useState('');
   const [classRank, setClassRank] = useState<any>(null);
+  const [studentTotalPoints, setStudentTotalPoints] = useState(0);
+  const [minRerata, setMinRerata] = useState(210); // Default 210
   const [prayerTimes, setPrayerTimes] = useState<any>(null);
 
   // Form States
@@ -146,6 +148,10 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
         setPrayerTimes(pt);
      });
 
+     SupabaseService.getGlobalSettings().then(settings => {
+        if (settings.minRerataPoin) setMinRerata(settings.minRerataPoin);
+     });
+
      if (user.kelas) {
          SupabaseService.getClassLeaderboard().then(leaderboard => {
             const myRankIndex = leaderboard.findIndex((l: any) => l.id === user.kelas);
@@ -153,6 +159,8 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                 setClassRank({ ...leaderboard[myRankIndex], rank: myRankIndex + 1, totalClasses: leaderboard.length });
             }
          });
+         
+         SupabaseService.getStudentTotalPoints(user.id).then(setStudentTotalPoints);
      }
 
      SupabaseService.getDailyLog(user.id, selectedDate).then(data => {
@@ -390,7 +398,7 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
 
        {classRank && (
             <div className="glass-card bg-gradient-to-r from-purple-600 to-indigo-600 rounded-[24px] p-6 text-white mb-6 shadow-xl relative overflow-hidden animate-slide-up">
-                <div className="relative z-10 flex justify-between items-center">
+                <div className="relative z-10 flex justify-between items-center mb-4">
                     <div>
                         <p className="text-[10px] font-bold text-purple-200 uppercase tracking-widest mb-1">KELAS {user.kelas}</p>
                         <h2 className="text-3xl font-black mb-1">Peringkat {classRank.rank}</h2>
@@ -401,6 +409,47 @@ export const TabHarian = ({ user, initialDate }: { user: User, initialDate?: str
                             <span className="block text-2xl font-black">{classRank.points}</span>
                             <span className="text-[8px] font-bold uppercase opacity-80">Total Poin</span>
                         </div>
+                    </div>
+                </div>
+
+                {/* RERATA POIN & STATUS */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                    <div className="flex justify-between items-center mb-3">
+                        <span className="text-[10px] font-bold text-purple-200 uppercase tracking-wider">RERATA POIN (Individu)</span>
+                        <span className="text-2xl font-black text-white">
+                            {(() => {
+                                const startCalculationDate = new Date('2026-02-18');
+                                const todayDate = new Date(getWIBDate());
+                                startCalculationDate.setHours(0,0,0,0);
+                                todayDate.setHours(0,0,0,0);
+                                
+                                const diffTime = Math.max(0, todayDate.getTime() - startCalculationDate.getTime());
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                                
+                                return (studentTotalPoints / diffDays).toFixed(1);
+                            })()}
+                        </span>
+                    </div>
+                    <div className="pt-3 border-t border-white/10">
+                        <span className="text-[10px] font-bold text-purple-200 uppercase block mb-2">STATUS</span>
+                        {(() => {
+                            const startCalculationDate = new Date('2026-02-18');
+                            const todayDate = new Date(getWIBDate());
+                            startCalculationDate.setHours(0,0,0,0);
+                            todayDate.setHours(0,0,0,0);
+                            
+                            const diffTime = Math.max(0, todayDate.getTime() - startCalculationDate.getTime());
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            
+                            const average = studentTotalPoints / diffDays;
+                            const isQualified = average >= minRerata;
+                            
+                            return (
+                                <div className={`text-[10px] font-bold px-3 py-2 rounded-lg text-center leading-relaxed ${isQualified ? 'bg-emerald-500 text-white shadow-lg' : 'bg-rose-500/90 text-white shadow-lg'}`}>
+                                    {isQualified ? 'MENERIMA KARTU PESERTA' : 'BELUM MEMENUHI SYARAT UNTUK MENERIMA KARTU PESERTA'}
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             </div>

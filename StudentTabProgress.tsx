@@ -77,13 +77,43 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
             <div className="space-y-4">
                 {subTab === 'rekap' ? (
                     <div className="bg-white rounded-[24px] p-5 shadow-sm border border-slate-100">
+                        {/* Summary Card for Rerata Poin */}
+                        <div className="bg-indigo-50 rounded-xl p-4 mb-4 flex items-center justify-between border border-indigo-100">
+                            <div>
+                                <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Rerata Poin</p>
+                                <p className="text-[10px] text-indigo-300">Total Poin / Hari (sejak 18 Feb)</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-2xl font-black text-indigo-600">
+                                    {(() => {
+                                        const startCalculationDate = new Date('2026-02-18');
+                                        const todayDate = new Date(getWIBDate());
+                                        startCalculationDate.setHours(0,0,0,0);
+                                        todayDate.setHours(0,0,0,0);
+                                        
+                                        const diffTime = Math.max(0, todayDate.getTime() - startCalculationDate.getTime());
+                                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                                        
+                                        // Note: recap only contains logs that exist. 
+                                        // Ideally we should sum points from logs within the date range if we want strictness, 
+                                        // but usually all logs are valid.
+                                        // However, we should only count points >= 2026-02-18.
+                                        const validPoints = recap.filter(r => r.date >= '2026-02-18').reduce((sum, r) => sum + (r.total_points || 0), 0);
+                                        
+                                        return (validPoints / diffDays).toFixed(1);
+                                    })()}
+                                </span>
+                            </div>
+                        </div>
+
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left text-slate-700">
                                 <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                                     <tr>
                                         <th className="px-3 py-3 font-bold rounded-tl-xl">Tanggal</th>
                                         <th className="px-3 py-3 font-bold text-center">Harian</th>
-                                        <th className="px-3 py-3 font-bold text-center rounded-tr-xl">Literasi</th>
+                                        <th className="px-3 py-3 font-bold text-center">Literasi</th>
+                                        <th className="px-3 py-3 font-bold text-center rounded-tr-xl">Poin</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -101,6 +131,8 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
                                         const isPast = dStr < todayStr;
                                         const isToday = dStr === todayStr;
 
+                                        const points = log?.total_points || 0;
+
                                         return (
                                             <tr key={dStr} className={`hover:bg-slate-50 ${isToday ? 'bg-blue-50' : ''}`}>
                                                 <td className="px-3 py-3 font-medium whitespace-nowrap">
@@ -116,6 +148,9 @@ export const TabProgress = ({ user, onEdit }: { user: User, onEdit: (date: strin
                                                     {hasLog ? (
                                                         literasiDone ? <i className="fas fa-check-circle text-blue-500 text-lg"></i> : <i className="fas fa-times-circle text-red-300 text-lg"></i>
                                                     ) : (isPast ? <i className="fas fa-times-circle text-red-300 text-lg"></i> : <span className="text-slate-300">-</span>)}
+                                                </td>
+                                                <td className="px-3 py-3 text-center font-bold text-slate-700">
+                                                    {hasLog ? points : (isPast ? 0 : '-')}
                                                 </td>
                                             </tr>
                                         );

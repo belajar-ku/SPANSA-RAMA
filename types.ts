@@ -25,6 +25,7 @@ export interface GlobalSettings {
     startRamadhanV1: string;
     startRamadhanV2: string;
     idulFitri: string;
+    minRerataPoin?: number; // New: Configurable threshold for "Lulus" status
 }
 
 export interface RamadanTarget {
