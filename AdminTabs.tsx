@@ -726,41 +726,67 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                         <table className="w-full text-xs text-left text-slate-700">
                             <thead className="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th rowSpan={2} className="px-3 py-2 font-bold border-r border-slate-200 sticky left-0 bg-slate-50 z-10 w-32 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('name')}>
+                                    <th rowSpan={2} className="px-3 py-2 font-bold border-r border-slate-200 sticky left-0 bg-slate-50 z-10 w-48 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('name')}>
                                         Nama {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                     </th>
-                                    <th rowSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center w-10">L/P</th>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center w-12">L/P</th>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-24 bg-yellow-50 text-yellow-700 border-r border-slate-200 cursor-pointer hover:bg-yellow-100" onClick={() => handleSort('points')}>
+                                        Total Poin {sortConfig?.key === 'points' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </th>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-20 bg-indigo-50 text-indigo-700 border-r border-slate-200">
+                                        Rerata
+                                    </th>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-emerald-50 text-emerald-700 border-r border-slate-200">
+                                        Ket
+                                    </th>
                                     {dateRange.map((d, i) => (
-                                        <th key={i} colSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center min-w-[80px]">
+                                        <th key={i} colSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center min-w-[100px]">
                                             {formatHeaderDate(d)}
                                         </th>
                                     ))}
-                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-yellow-50 text-yellow-700 border-l border-slate-200 cursor-pointer hover:bg-yellow-100" onClick={() => handleSort('points')}>
-                                        Total Poin {sortConfig?.key === 'points' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                    </th>
-                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-indigo-50 text-indigo-700 border-l border-slate-200">
-                                        Rerata
-                                    </th>
-                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-emerald-50 text-emerald-700 border-l border-slate-200">
-                                        Ket
-                                    </th>
                                 </tr>
                                 <tr>
                                     {dateRange.map((_d, i) => (
                                         <React.Fragment key={i}>
-                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-blue-50 text-blue-600 w-10">Har</th>
-                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-pink-50 text-pink-600 w-10">Lit</th>
+                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-blue-50 text-blue-600 w-12">Har</th>
+                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-pink-50 text-pink-600 w-12">Lit</th>
                                         </React.Fragment>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {sortedData.map((s) => {
-                                    let totalPoints = 0;
+                                    // Calculate total points for the displayed range
+                                    let rangeTotalPoints = 0;
+                                    dateRange.forEach(d => {
+                                        const dStr = dateString(d);
+                                        const log = s.logs[dStr];
+                                        if (log) rangeTotalPoints += (log.points || 0);
+                                    });
+
                                     return (
                                     <tr key={s.id} className="hover:bg-slate-50">
-                                        <td className="px-3 py-2 font-bold border-r border-slate-100 sticky left-0 bg-white z-10 truncate max-w-[120px]">{s.name}</td>
+                                        <td className="px-3 py-2 font-bold border-r border-slate-100 sticky left-0 bg-white z-10 truncate max-w-[200px]">{s.name}</td>
                                         <td className="px-2 py-2 text-center border-r border-slate-100 font-bold">{s.gender}</td>
+                                        
+                                        <td className="px-2 py-2 text-center font-bold bg-yellow-50 text-yellow-700 border-r border-slate-100">
+                                            {rangeTotalPoints}
+                                        </td>
+                                        <td className="px-2 py-2 text-center font-bold bg-indigo-50 text-indigo-700 border-r border-slate-100">
+                                            {((s.totalPointsAllTime || 0) / daysCount).toFixed(1)}
+                                        </td>
+                                        {(() => {
+                                            const averageVal = (s.totalPointsAllTime || 0) / daysCount;
+                                            const isFilledEveryDay = (s.daysFilled || 0) >= requiredDays;
+                                            const threshold = s.gender === 'P' ? minRerataP : minRerata;
+                                            const isLulus = averageVal >= threshold && isFilledEveryDay;
+                                            return (
+                                                <td className={`px-2 py-2 text-center font-bold border-r border-slate-100 ${isLulus ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                                    {isLulus ? 'L' : 'TL'}
+                                                </td>
+                                            );
+                                        })()}
+
                                         {dateRange.map((d, i) => {
                                             const dStr = dateString(d);
                                             const log = s.logs[dStr];
@@ -768,7 +794,6 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                                             const hasLog = !!log;
                                             const harian = log?.harian;
                                             const literasi = log?.literasi;
-                                            if (hasLog) totalPoints += (log.points || 0);
 
                                             const isPast = dStr < todayStr;
                                             
@@ -787,29 +812,12 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                                                 </React.Fragment>
                                             );
                                         })}
-                                        <td className="px-2 py-2 text-center font-bold bg-yellow-50 text-yellow-700 border-l border-slate-100">
-                                            {totalPoints}
-                                        </td>
-                                        <td className="px-2 py-2 text-center font-bold bg-indigo-50 text-indigo-700 border-l border-slate-100">
-                                            {((s.totalPointsAllTime || 0) / daysCount).toFixed(1)}
-                                        </td>
-                                        {(() => {
-                                            const averageVal = (s.totalPointsAllTime || 0) / daysCount;
-                                            const isFilledEveryDay = (s.daysFilled || 0) >= requiredDays;
-                                            const threshold = s.gender === 'P' ? minRerataP : minRerata;
-                                            const isLulus = averageVal >= threshold && isFilledEveryDay;
-                                            return (
-                                                <td className={`px-2 py-2 text-center font-bold border-l border-slate-100 ${isLulus ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                                                    {isLulus ? 'L' : 'TL'}
-                                                </td>
-                                            );
-                                        })()}
                                     </tr>
                                     );
                                 })}
                                 {data.length === 0 && (
                                     <tr>
-                                        <td colSpan={2 + (dateRange.length * 2)} className="p-6 text-center text-slate-400">Tidak ada data.</td>
+                                        <td colSpan={5 + (dateRange.length * 2)} className="p-6 text-center text-slate-400">Tidak ada data.</td>
                                     </tr>
                                 )}
                             </tbody>
