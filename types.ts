@@ -25,8 +25,8 @@ export interface LiterasiMaterial {
     // Legacy support
     youtubeUrl?: string;
     questions?: string[];
-    // New structure
-    levels?: Record<string, LiterasiLevelConfig>;
+    // New structure: Key is class level ('7', '8', '9'), Value is ARRAY of configs
+    levels?: Record<string, LiterasiLevelConfig[]>;
 }
 
 export interface GlobalSettings {

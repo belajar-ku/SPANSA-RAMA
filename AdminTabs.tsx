@@ -864,37 +864,61 @@ export const TabAdminData = () => {
         Swal.fire('Sukses', `Materi literasi tanggal ${selectedDate} disimpan`, 'success');
     };
 
-    const currentLevelConfig = literasiMaterial.levels?.[activeLevel] || { youtubeUrl: '', questions: [] };
+    const currentLevelConfigs = literasiMaterial.levels?.[activeLevel] || [{ youtubeUrl: '', questions: [] }];
 
-    const updateLevelConfig = (field: 'youtubeUrl' | 'questions', value: any) => {
+    const updateLevelConfig = (videoIndex: number, field: 'youtubeUrl' | 'questions', value: any) => {
         const newLevels = { ...(literasiMaterial.levels || {}) };
         if (!newLevels[activeLevel]) {
-            newLevels[activeLevel] = { youtubeUrl: '', questions: [] };
+            newLevels[activeLevel] = [{ youtubeUrl: '', questions: [] }];
         }
         
+        const currentConfigs = [...newLevels[activeLevel]];
+        if (!currentConfigs[videoIndex]) {
+            currentConfigs[videoIndex] = { youtubeUrl: '', questions: [] };
+        }
+
         if (field === 'youtubeUrl') {
-            newLevels[activeLevel].youtubeUrl = value;
+            currentConfigs[videoIndex].youtubeUrl = value;
         } else {
-            newLevels[activeLevel].questions = value;
+            currentConfigs[videoIndex].questions = value;
         }
         
+        newLevels[activeLevel] = currentConfigs;
         setLiterasiMaterial({ ...literasiMaterial, levels: newLevels });
     };
 
-    const addQuestion = () => {
-        const currentQuestions = currentLevelConfig.questions || [];
-        updateLevelConfig('questions', [...currentQuestions, '']);
+    const addVideo = () => {
+        const newLevels = { ...(literasiMaterial.levels || {}) };
+        if (!newLevels[activeLevel]) {
+            newLevels[activeLevel] = [{ youtubeUrl: '', questions: [] }];
+        }
+        newLevels[activeLevel] = [...newLevels[activeLevel], { youtubeUrl: '', questions: [''] }];
+        setLiterasiMaterial({ ...literasiMaterial, levels: newLevels });
     };
 
-    const updateQuestion = (i: number, val: string) => {
-        const newQ = [...(currentLevelConfig.questions || [])];
-        newQ[i] = val;
-        updateLevelConfig('questions', newQ);
+    const removeVideo = (videoIndex: number) => {
+        const newLevels = { ...(literasiMaterial.levels || {}) };
+        if (!newLevels[activeLevel]) return;
+        
+        const currentConfigs = newLevels[activeLevel].filter((_, idx) => idx !== videoIndex);
+        newLevels[activeLevel] = currentConfigs.length ? currentConfigs : [{ youtubeUrl: '', questions: [] }];
+        setLiterasiMaterial({ ...literasiMaterial, levels: newLevels });
     };
 
-    const removeQuestion = (i: number) => {
-        const newQ = (currentLevelConfig.questions || []).filter((_, idx) => idx !== i);
-        updateLevelConfig('questions', newQ);
+    const addQuestion = (videoIndex: number) => {
+        const currentQuestions = currentLevelConfigs[videoIndex]?.questions || [];
+        updateLevelConfig(videoIndex, 'questions', [...currentQuestions, '']);
+    };
+
+    const updateQuestion = (videoIndex: number, qIndex: number, val: string) => {
+        const newQ = [...(currentLevelConfigs[videoIndex]?.questions || [])];
+        newQ[qIndex] = val;
+        updateLevelConfig(videoIndex, 'questions', newQ);
+    };
+
+    const removeQuestion = (videoIndex: number, qIndex: number) => {
+        const newQ = (currentLevelConfigs[videoIndex]?.questions || []).filter((_, idx) => idx !== qIndex);
+        updateLevelConfig(videoIndex, 'questions', newQ);
     };
 
     return (
@@ -989,28 +1013,42 @@ export const TabAdminData = () => {
                                 ))}
                             </div>
 
-                            <div className="animate-fade-in bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <div className="mb-4">
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Link YouTube (Kelas {activeLevel})</label>
-                                    <input 
-                                        type="text" 
-                                        className="w-full p-3 rounded-xl border focus:border-red-400 outline-none bg-white" 
-                                        placeholder="Link YouTube atau <iframe..." 
-                                        value={currentLevelConfig.youtubeUrl} 
-                                        onChange={e => updateLevelConfig('youtubeUrl', e.target.value)} 
-                                    />
+                            {currentLevelConfigs.map((config, vIdx) => (
+                                <div key={vIdx} className="animate-fade-in bg-slate-50 p-4 rounded-xl border border-slate-100 mb-4 relative">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h4 className="font-bold text-slate-700 text-sm">Video {vIdx + 1}</h4>
+                                        {currentLevelConfigs.length > 1 && (
+                                            <button onClick={() => removeVideo(vIdx)} className="text-xs text-red-500 font-bold hover:underline">
+                                                <i className="fas fa-trash mr-1"></i> Hapus Video
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="mb-4">
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Link YouTube (Kelas {activeLevel})</label>
+                                        <input 
+                                            type="text" 
+                                            className="w-full p-3 rounded-xl border focus:border-red-400 outline-none bg-white" 
+                                            placeholder="Link YouTube atau <iframe..." 
+                                            value={config.youtubeUrl} 
+                                            onChange={e => updateLevelConfig(vIdx, 'youtubeUrl', e.target.value)} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-2 block">Daftar Pertanyaan (Kelas {activeLevel})</label>
+                                        {config.questions?.map((q, i) => (
+                                            <div key={i} className="flex gap-2 mb-2">
+                                                <input className="flex-1 p-2 rounded-lg border text-sm bg-white" value={q} onChange={e => updateQuestion(vIdx, i, e.target.value)} placeholder={`Pertanyaan ${i+1}`} />
+                                                <button onClick={() => removeQuestion(vIdx, i)} className="w-10 bg-red-100 text-red-500 rounded-lg hover:bg-red-200"><i className="fas fa-trash"></i></button>
+                                            </div>
+                                        ))}
+                                        <button onClick={() => addQuestion(vIdx)} className="w-full py-2 bg-white text-slate-600 font-bold rounded-lg text-xs border border-dashed border-slate-300 hover:bg-slate-50">+ Tambah Pertanyaan</button>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-2 block">Daftar Pertanyaan (Kelas {activeLevel})</label>
-                                    {currentLevelConfig.questions?.map((q, i) => (
-                                        <div key={i} className="flex gap-2 mb-2">
-                                            <input className="flex-1 p-2 rounded-lg border text-sm bg-white" value={q} onChange={e => updateQuestion(i, e.target.value)} placeholder={`Pertanyaan ${i+1}`} />
-                                            <button onClick={() => removeQuestion(i)} className="w-10 bg-red-100 text-red-500 rounded-lg hover:bg-red-200"><i className="fas fa-trash"></i></button>
-                                        </div>
-                                    ))}
-                                    <button onClick={addQuestion} className="w-full py-2 bg-white text-slate-600 font-bold rounded-lg text-xs border border-dashed border-slate-300 hover:bg-slate-50">+ Tambah Pertanyaan</button>
-                                </div>
-                            </div>
+                            ))}
+
+                            <button onClick={addVideo} className="w-full py-3 bg-white border-2 border-dashed border-slate-300 text-slate-500 font-bold rounded-xl hover:bg-slate-50 mb-4">
+                                <i className="fas fa-plus-circle mr-2"></i> Tambah Video Lain
+                            </button>
 
                             <button onClick={saveLiterasi} className="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition-colors">Simpan Literasi ({selectedDate})</button>
                         </>

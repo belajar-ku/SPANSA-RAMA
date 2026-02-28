@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { User, LiterasiMaterial, RamadanTarget, DailyLog, GlobalSettings, getWIBDate } from './types';
+import { User, LiterasiMaterial, LiterasiLevelConfig, RamadanTarget, DailyLog, GlobalSettings, getWIBDate } from './types';
 
 // PERBAIKAN: Project ID yang benar sesuai token adalah 'xnlwtkxhifqabuawmsdu'
 const SUPABASE_URL = 'https://xnlwtkxhifqabuawmsdu.supabase.co';
@@ -569,16 +569,16 @@ export const SupabaseService = {
       try {
         const { data } = await supabase.from('literasi_materials').select('*').eq('date', date).maybeSingle();
         
-        const defaultLevel = { youtubeUrl: '', questions: ['Jelaskan inti sari video tersebut!'] };
-        const defaultLevels = { '7': { ...defaultLevel }, '8': { ...defaultLevel }, '9': { ...defaultLevel } };
-
+        const defaultLevel = [{ youtubeUrl: '', questions: ['Jelaskan inti sari video tersebut!'] }];
+        
         if (data) {
             // Check if data.questions is an array (legacy)
             if (Array.isArray(data.questions)) {
-                const legacyLevel = { 
+                // This is the OLD legacy format where questions was just string[]
+                const legacyLevel = [{ 
                     youtubeUrl: data.youtube_url || '', 
                     questions: data.questions || [] 
-                };
+                }];
                 return {
                     id: data.id,
                     date: data.date,
@@ -590,23 +590,38 @@ export const SupabaseService = {
                 };
             } else {
                 // New structure: data.questions is the levels object
-                // Ensure all levels exist
-                const levels = data.questions || {};
+                const storedLevels = data.questions || {};
+                const processedLevels: Record<string, LiterasiLevelConfig[]> = {};
+
+                ['7', '8', '9'].forEach(lvl => {
+                    const lvlData = storedLevels[lvl];
+                    if (Array.isArray(lvlData)) {
+                        // Already array of configs (Video 1, Video 2...)
+                        processedLevels[lvl] = lvlData;
+                    } else if (lvlData && typeof lvlData === 'object') {
+                        // Intermediate format (Single config object) -> Wrap in array
+                        processedLevels[lvl] = [lvlData];
+                    } else {
+                        // Default
+                        processedLevels[lvl] = [...defaultLevel];
+                    }
+                });
+
                 return {
                     id: data.id,
                     date: data.date,
-                    levels: {
-                        '7': levels['7'] || { ...defaultLevel },
-                        '8': levels['8'] || { ...defaultLevel },
-                        '9': levels['9'] || { ...defaultLevel }
-                    }
+                    levels: processedLevels
                 };
             }
         }
-        return { date, levels: defaultLevels };
-      } catch { 
-          const defaultLevel = { youtubeUrl: '', questions: ['Jelaskan inti sari video tersebut!'] };
-          return { date, levels: { '7': defaultLevel, '8': defaultLevel, '9': defaultLevel } }; 
+        
+        return { 
+            date, 
+            levels: { '7': [...defaultLevel], '8': [...defaultLevel], '9': [...defaultLevel] } 
+        };
+      } catch (error) {
+        console.error('Error fetching literasi material:', error);
+        return { date, levels: {} };
       }
   },
 
@@ -614,7 +629,7 @@ export const SupabaseService = {
   saveLiterasiMaterial: async (material: LiterasiMaterial) => {
       const payload = {
           date: material.date,
-          youtube_url: material.levels?.['7']?.youtubeUrl || '', // Fallback for legacy readers if any
+          youtube_url: material.levels?.['7']?.[0]?.youtubeUrl || '', // Fallback for legacy readers if any
           questions: material.levels // Store the levels object here
       };
       await supabase.from('literasi_materials').upsert(payload, { onConflict: 'date' });
