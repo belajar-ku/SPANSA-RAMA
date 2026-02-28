@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import { SupabaseService } from './SupabaseService';
-import { User, LiterasiMaterial, DailyLog, DailyLogDetails, getWIBDate } from './types';
+import { User, DailyLog, DailyLogDetails, getWIBDate } from './types';
 import { toTitleCase } from './App';
 import { GoogleGenAI } from "@google/genai";
 
@@ -21,7 +21,7 @@ const getVideoId = (url: string) => {
 
 export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: string }) => {
     const [date, setDate] = useState(initialDate || getWIBDate());
-    const [material, setMaterial] = useState<LiterasiMaterial | null>(null);
+    const [currentConfig, setCurrentConfig] = useState<{ youtubeUrl: string, questions: string[] } | null>(null);
     const [answers, setAnswers] = useState<string[]>([]);
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -55,7 +55,20 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                 setIsPlayerReady(false);
 
                 const mat = await SupabaseService.getLiterasiMaterial(date);
-                setMaterial(mat);
+                
+                // Determine Level Config
+                let level = '7';
+                if (user.kelas) {
+                    if (user.kelas.startsWith('7')) level = '7';
+                    else if (user.kelas.startsWith('8')) level = '8';
+                    else if (user.kelas.startsWith('9')) level = '9';
+                }
+
+                let config = { youtubeUrl: mat.youtubeUrl || '', questions: mat.questions || [] };
+                if (mat.levels && mat.levels[level]) {
+                    config = mat.levels[level];
+                }
+                setCurrentConfig(config);
                 
                 const log = await SupabaseService.getDailyLog(user.id, date);
                 if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
@@ -79,7 +92,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                         setIsPlayerReady(true);
                     }
                 } else {
-                    setAnswers(new Array(mat.questions.length).fill(''));
+                    setAnswers(new Array(config.questions.length).fill(''));
                     setSubmitted(false);
                 }
                 setLoading(false);
@@ -94,12 +107,12 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
             }
         };
         init();
-    }, [user.id, date]);
+    }, [user.id, date, user.kelas]);
 
     // Initialize Player when material is loaded
     useEffect(() => {
-        if (!loading && material) {
-            const videoId = getVideoId(material.youtubeUrl);
+        if (!loading && currentConfig) {
+            const videoId = getVideoId(currentConfig.youtubeUrl);
 
             if (videoId) {
                 const initPlayer = () => {
@@ -145,7 +158,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                 }
             }
         }
-    }, [loading, material]);
+    }, [loading, currentConfig]);
 
     const handleManualPlay = () => {
         if(playerRef.current && playerRef.current.playVideo && isPlayerReady) {
@@ -215,7 +228,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
             didOpen: () => Swal.showLoading() 
         });
 
-        const validation = await validateAnswersWithAI(material?.questions || [], answers);
+        const validation = await validateAnswersWithAI(currentConfig?.questions || [], answers);
 
         if (!validation.valid) {
             return Swal.fire({
@@ -233,7 +246,6 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
         let details = log?.details ? { ...log.details } : {};
         
         // Explicitly preserve existing journal fields if they exist
-        // This is redundant with spread but safer against accidental overwrites
         if (log?.details) {
             details.puasaStatus = log.details.puasaStatus;
             details.alasanTidakPuasa = log.details.alasanTidakPuasa;
@@ -281,7 +293,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
     };
 
     if (loading) return <div className="p-10 text-center"><i className="fas fa-circle-notch fa-spin text-primary-500"></i></div>;
-    if (!material || !material.youtubeUrl) return <div className="p-10 text-center"><p className="text-slate-500">Belum ada materi literasi untuk tanggal {date}.</p></div>;
+    if (!currentConfig || !currentConfig.youtubeUrl) return <div className="p-10 text-center"><p className="text-slate-500">Belum ada materi literasi untuk tanggal {date}.</p></div>;
 
     return (
         <div className="p-6 pb-28 animate-slide-up">
@@ -369,7 +381,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                            </div>
                        )}
 
-                       {material.questions.map((q, idx) => (
+                       {currentConfig.questions.map((q, idx) => (
                            <div key={idx}>
                                <label className="text-xs font-bold text-slate-500 block mb-2">{idx+1}. {q}</label>
                                <textarea 

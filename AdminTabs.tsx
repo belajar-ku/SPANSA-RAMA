@@ -726,21 +726,21 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                         <table className="w-full text-xs text-left text-slate-700">
                             <thead className="text-[10px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th rowSpan={2} className="px-3 py-2 font-bold border-r border-slate-200 sticky left-0 bg-slate-50 z-10 w-48 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('name')}>
+                                    <th rowSpan={2} className="px-3 py-2 font-bold border-r border-slate-200 sticky left-0 bg-slate-50 z-10 w-64 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('name')}>
                                         Nama {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                     </th>
-                                    <th rowSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center w-12">L/P</th>
-                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-24 bg-yellow-50 text-yellow-700 border-r border-slate-200 cursor-pointer hover:bg-yellow-100" onClick={() => handleSort('points')}>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-32 bg-yellow-50 text-yellow-700 border-r border-slate-200 cursor-pointer hover:bg-yellow-100" onClick={() => handleSort('points')}>
                                         Total Poin {sortConfig?.key === 'points' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                     </th>
-                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-20 bg-indigo-50 text-indigo-700 border-r border-slate-200">
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-28 bg-indigo-50 text-indigo-700 border-r border-slate-200">
                                         Rerata
                                     </th>
-                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-16 bg-emerald-50 text-emerald-700 border-r border-slate-200">
+                                    <th rowSpan={2} className="px-2 py-2 font-bold text-center w-24 bg-emerald-50 text-emerald-700 border-r border-slate-200">
                                         Ket
                                     </th>
+                                    <th rowSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center w-16">L/P</th>
                                     {dateRange.map((d, i) => (
-                                        <th key={i} colSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center min-w-[100px]">
+                                        <th key={i} colSpan={2} className="px-2 py-2 font-bold border-r border-slate-200 text-center min-w-[120px]">
                                             {formatHeaderDate(d)}
                                         </th>
                                     ))}
@@ -748,8 +748,8 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                                 <tr>
                                     {dateRange.map((_d, i) => (
                                         <React.Fragment key={i}>
-                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-blue-50 text-blue-600 w-12">Har</th>
-                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-pink-50 text-pink-600 w-12">Lit</th>
+                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-blue-50 text-blue-600 w-14">Har</th>
+                                            <th className="px-1 py-1 border-r border-slate-200 text-center bg-pink-50 text-pink-600 w-14">Lit</th>
                                         </React.Fragment>
                                     ))}
                                 </tr>
@@ -766,8 +766,7 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
 
                                     return (
                                     <tr key={s.id} className="hover:bg-slate-50">
-                                        <td className="px-3 py-2 font-bold border-r border-slate-100 sticky left-0 bg-white z-10 truncate max-w-[200px]">{s.name}</td>
-                                        <td className="px-2 py-2 text-center border-r border-slate-100 font-bold">{s.gender}</td>
+                                        <td className="px-3 py-2 font-bold border-r border-slate-100 sticky left-0 bg-white z-10 truncate max-w-[250px]">{s.name}</td>
                                         
                                         <td className="px-2 py-2 text-center font-bold bg-yellow-50 text-yellow-700 border-r border-slate-100">
                                             {rangeTotalPoints}
@@ -786,6 +785,7 @@ export const TabRekapAbsensi = ({ currentUser }: { currentUser?: User }) => {
                                                 </td>
                                             );
                                         })()}
+                                        <td className="px-2 py-2 text-center border-r border-slate-100 font-bold">{s.gender}</td>
 
                                         {dateRange.map((d, i) => {
                                             const dStr = dateString(d);
@@ -835,8 +835,9 @@ export const TabAdminData = () => {
     
     // State for Literasi Material
     const [selectedDate, setSelectedDate] = useState(getWIBDate());
-    const [literasiMaterial, setLiterasiMaterial] = useState<LiterasiMaterial>({ date: '', youtubeUrl: '', questions: [] });
+    const [literasiMaterial, setLiterasiMaterial] = useState<LiterasiMaterial>({ date: '', levels: {} });
     const [loadingLiterasi, setLoadingLiterasi] = useState(false);
+    const [activeLevel, setActiveLevel] = useState<'7' | '8' | '9'>('7');
 
     useEffect(() => {
         SupabaseService.getGlobalSettings().then(setGlobalSettings);
@@ -863,15 +864,37 @@ export const TabAdminData = () => {
         Swal.fire('Sukses', `Materi literasi tanggal ${selectedDate} disimpan`, 'success');
     };
 
-    const addQuestion = () => setLiterasiMaterial({...literasiMaterial, questions: [...literasiMaterial.questions, '']});
-    const updateQuestion = (i: number, val: string) => {
-        const newQ = [...literasiMaterial.questions];
-        newQ[i] = val;
-        setLiterasiMaterial({...literasiMaterial, questions: newQ});
+    const currentLevelConfig = literasiMaterial.levels?.[activeLevel] || { youtubeUrl: '', questions: [] };
+
+    const updateLevelConfig = (field: 'youtubeUrl' | 'questions', value: any) => {
+        const newLevels = { ...(literasiMaterial.levels || {}) };
+        if (!newLevels[activeLevel]) {
+            newLevels[activeLevel] = { youtubeUrl: '', questions: [] };
+        }
+        
+        if (field === 'youtubeUrl') {
+            newLevels[activeLevel].youtubeUrl = value;
+        } else {
+            newLevels[activeLevel].questions = value;
+        }
+        
+        setLiterasiMaterial({ ...literasiMaterial, levels: newLevels });
     };
+
+    const addQuestion = () => {
+        const currentQuestions = currentLevelConfig.questions || [];
+        updateLevelConfig('questions', [...currentQuestions, '']);
+    };
+
+    const updateQuestion = (i: number, val: string) => {
+        const newQ = [...(currentLevelConfig.questions || [])];
+        newQ[i] = val;
+        updateLevelConfig('questions', newQ);
+    };
+
     const removeQuestion = (i: number) => {
-        const newQ = literasiMaterial.questions.filter((_, idx) => idx !== i);
-        setLiterasiMaterial({...literasiMaterial, questions: newQ});
+        const newQ = (currentLevelConfig.questions || []).filter((_, idx) => idx !== i);
+        updateLevelConfig('questions', newQ);
     };
 
     return (
@@ -953,21 +976,43 @@ export const TabAdminData = () => {
                         <div className="text-center py-4 text-slate-500"><i className="fas fa-circle-notch fa-spin mr-2"></i> Memuat materi...</div>
                     ) : (
                         <>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500">Link YouTube / Kode Embed</label>
-                                <input type="text" className="w-full p-3 rounded-xl border" placeholder="Link YouTube atau <iframe..." value={literasiMaterial.youtubeUrl} onChange={e => setLiterasiMaterial({...literasiMaterial, youtubeUrl: e.target.value})} />
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 mb-2 block">Daftar Pertanyaan</label>
-                                {literasiMaterial.questions.map((q, i) => (
-                                    <div key={i} className="flex gap-2 mb-2">
-                                        <input className="flex-1 p-2 rounded-lg border text-sm" value={q} onChange={e => updateQuestion(i, e.target.value)} placeholder={`Pertanyaan ${i+1}`} />
-                                        <button onClick={() => removeQuestion(i)} className="w-10 bg-red-100 text-red-500 rounded-lg"><i className="fas fa-trash"></i></button>
-                                    </div>
+                            {/* Level Tabs */}
+                            <div className="flex gap-2 mb-2 p-1 bg-slate-100 rounded-xl">
+                                {['7', '8', '9'].map(lvl => (
+                                    <button 
+                                        key={lvl}
+                                        onClick={() => setActiveLevel(lvl as any)}
+                                        className={`flex-1 py-2 rounded-lg font-bold text-sm transition-all ${activeLevel === lvl ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Kelas {lvl}
+                                    </button>
                                 ))}
-                                <button onClick={addQuestion} className="w-full py-2 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs border border-dashed border-slate-300">+ Tambah Pertanyaan</button>
                             </div>
-                            <button onClick={saveLiterasi} className="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-md">Simpan Literasi ({selectedDate})</button>
+
+                            <div className="animate-fade-in bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div className="mb-4">
+                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Link YouTube (Kelas {activeLevel})</label>
+                                    <input 
+                                        type="text" 
+                                        className="w-full p-3 rounded-xl border focus:border-red-400 outline-none bg-white" 
+                                        placeholder="Link YouTube atau <iframe..." 
+                                        value={currentLevelConfig.youtubeUrl} 
+                                        onChange={e => updateLevelConfig('youtubeUrl', e.target.value)} 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 mb-2 block">Daftar Pertanyaan (Kelas {activeLevel})</label>
+                                    {currentLevelConfig.questions?.map((q, i) => (
+                                        <div key={i} className="flex gap-2 mb-2">
+                                            <input className="flex-1 p-2 rounded-lg border text-sm bg-white" value={q} onChange={e => updateQuestion(i, e.target.value)} placeholder={`Pertanyaan ${i+1}`} />
+                                            <button onClick={() => removeQuestion(i)} className="w-10 bg-red-100 text-red-500 rounded-lg hover:bg-red-200"><i className="fas fa-trash"></i></button>
+                                        </div>
+                                    ))}
+                                    <button onClick={addQuestion} className="w-full py-2 bg-white text-slate-600 font-bold rounded-lg text-xs border border-dashed border-slate-300 hover:bg-slate-50">+ Tambah Pertanyaan</button>
+                                </div>
+                            </div>
+
+                            <button onClick={saveLiterasi} className="w-full py-3 bg-red-600 text-white font-bold rounded-xl shadow-md hover:bg-red-700 transition-colors">Simpan Literasi ({selectedDate})</button>
                         </>
                     )}
                 </div>

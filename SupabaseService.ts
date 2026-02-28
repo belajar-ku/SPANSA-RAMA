@@ -568,24 +568,54 @@ export const SupabaseService = {
   getLiterasiMaterial: async (date: string): Promise<LiterasiMaterial> => {
       try {
         const { data } = await supabase.from('literasi_materials').select('*').eq('date', date).maybeSingle();
+        
+        const defaultLevel = { youtubeUrl: '', questions: ['Jelaskan inti sari video tersebut!'] };
+        const defaultLevels = { '7': { ...defaultLevel }, '8': { ...defaultLevel }, '9': { ...defaultLevel } };
+
         if (data) {
-            return {
-                id: data.id,
-                date: data.date,
-                youtubeUrl: data.youtube_url || '',
-                questions: data.questions || []
-            };
+            // Check if data.questions is an array (legacy)
+            if (Array.isArray(data.questions)) {
+                const legacyLevel = { 
+                    youtubeUrl: data.youtube_url || '', 
+                    questions: data.questions || [] 
+                };
+                return {
+                    id: data.id,
+                    date: data.date,
+                    levels: {
+                        '7': legacyLevel,
+                        '8': legacyLevel,
+                        '9': legacyLevel
+                    }
+                };
+            } else {
+                // New structure: data.questions is the levels object
+                // Ensure all levels exist
+                const levels = data.questions || {};
+                return {
+                    id: data.id,
+                    date: data.date,
+                    levels: {
+                        '7': levels['7'] || { ...defaultLevel },
+                        '8': levels['8'] || { ...defaultLevel },
+                        '9': levels['9'] || { ...defaultLevel }
+                    }
+                };
+            }
         }
-        return { date, youtubeUrl: '', questions: ['Jelaskan inti sari video tersebut!'] };
-      } catch { return { date, youtubeUrl: '', questions: [] }; }
+        return { date, levels: defaultLevels };
+      } catch { 
+          const defaultLevel = { youtubeUrl: '', questions: ['Jelaskan inti sari video tersebut!'] };
+          return { date, levels: { '7': defaultLevel, '8': defaultLevel, '9': defaultLevel } }; 
+      }
   },
 
   // [NEW] Save Material
   saveLiterasiMaterial: async (material: LiterasiMaterial) => {
       const payload = {
           date: material.date,
-          youtube_url: material.youtubeUrl,
-          questions: material.questions
+          youtube_url: material.levels?.['7']?.youtubeUrl || '', // Fallback for legacy readers if any
+          questions: material.levels // Store the levels object here
       };
       await supabase.from('literasi_materials').upsert(payload, { onConflict: 'date' });
   },

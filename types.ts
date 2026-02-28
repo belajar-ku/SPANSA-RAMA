@@ -14,11 +14,19 @@ export interface User {
 }
 
 // Interface baru untuk Literasi per Tanggal
+export interface LiterasiLevelConfig {
+    youtubeUrl: string;
+    questions: string[];
+}
+
 export interface LiterasiMaterial {
     id?: string;
     date: string;
-    youtubeUrl: string;
-    questions: string[];
+    // Legacy support
+    youtubeUrl?: string;
+    questions?: string[];
+    // New structure
+    levels?: Record<string, LiterasiLevelConfig>;
 }
 
 export interface GlobalSettings {
