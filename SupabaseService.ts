@@ -242,7 +242,23 @@ export const SupabaseService = {
 
           // 2. Get Questions
           const { data: material } = await supabase.from('literasi_materials').select('questions').eq('date', date).maybeSingle();
-          const questions = material?.questions || [];
+          
+          let flatQuestions: string[] = [];
+          if (material && material.questions) {
+              const level = kelas.replace(/[^0-9]/g, ''); // Extract '7', '8', '9'
+              const rawLevelData = material.questions[level];
+              
+              if (rawLevelData) {
+                  const configs = Array.isArray(rawLevelData) ? rawLevelData : [rawLevelData];
+                  configs.forEach((cfg: any, vIdx: number) => {
+                      if (cfg.questions && Array.isArray(cfg.questions)) {
+                          cfg.questions.forEach((q: string) => {
+                              flatQuestions.push(`(Video ${vIdx + 1}) ${q}`);
+                          });
+                      }
+                  });
+              }
+          }
 
           // 3. Get Logs
           const { data: logs } = await supabase.from('daily_logs').select('user_id, details').eq('date', date).in('user_id', students.map(s => s.id));
@@ -265,7 +281,7 @@ export const SupabaseService = {
           // Sort by submitted first
           data.sort((a, b) => Number(b.submitted) - Number(a.submitted));
 
-          return { students: data, questions };
+          return { students: data, questions: flatQuestions };
       } catch (e) { console.error(e); return { students: [], questions: [] }; }
   },
 
