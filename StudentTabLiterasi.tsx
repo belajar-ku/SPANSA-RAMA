@@ -367,6 +367,20 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                  />
             </div>
 
+            {currentConfigs.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-6 flex items-start gap-3 animate-fade-in">
+                    <i className="fas fa-info-circle text-yellow-600 mt-0.5"></i>
+                    <div>
+                        <p className="text-xs text-yellow-800 font-bold">
+                            Ada {currentConfigs.length} video yang harus dikerjakan hari ini.
+                        </p>
+                        <p className="text-[10px] text-yellow-600 mt-1">
+                            Tonton dan kerjakan soal untuk setiap video secara berurutan.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="space-y-8">
                 {currentConfigs.map((config, vIdx) => {
                     const isFinished = videosFinished[vIdx];
@@ -378,7 +392,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                             <div className="glass-card p-2 rounded-[24px] relative overflow-hidden">
                                 <div className="px-4 py-2 text-sm font-bold text-slate-600">Video {vIdx + 1}</div>
                                 {/* Video Container */}
-                                <div className="relative aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black group">
+                                <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden shadow-lg bg-black group" style={{ aspectRatio: '16/9' }}>
                                     <div id={`youtube-player-${vIdx}`} className="w-full h-full pointer-events-none"></div> 
                                     
                                     {/* Overlay for Initial Play */}

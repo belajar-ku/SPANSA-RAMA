@@ -81,7 +81,7 @@ const TodayTargetModal = ({ user, onClose }: { user: User, onClose: () => void }
 
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-900/90 backdrop-blur-md animate-slide-up">
-            <div className="bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl relative">
+            <div className="bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto custom-scrollbar">
                 <div className="text-center mb-6">
                     <h3 className="text-2xl font-black text-slate-800">Target Hari Ini</h3>
                     <p className="text-xs text-slate-500 font-bold mt-1">{date}</p>
