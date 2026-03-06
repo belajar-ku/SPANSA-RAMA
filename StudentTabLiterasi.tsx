@@ -428,15 +428,13 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                                 </div>
                             </div>
 
-                            <div className={`glass-card p-6 rounded-[24px] transition-all duration-500 ${!isFinished ? 'opacity-50 grayscale pointer-events-none select-none' : 'opacity-100'}`}>
+                            <div className={`glass-card p-6 rounded-[24px] transition-all duration-500`}>
                                 <h3 className="font-bold text-slate-800 mb-4 flex justify-between items-center">
                                     <span>Pertanyaan Video {vIdx + 1}</span>
-                                    {!isFinished && <div className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded-full"><i className="fas fa-lock mr-1"></i> Terkunci</div>}
+                                    {!isFinished && <div className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded-full"><i className="fas fa-lock mr-1"></i> Jawaban Terkunci</div>}
                                 </h3>
                                 
                                 <div className="space-y-4 relative">
-                                    {!isFinished && <div className="absolute inset-0 z-50 bg-white/10 backdrop-blur-[2px] rounded-xl flex items-center justify-center text-slate-500 font-bold text-xs"><i className="fas fa-play-circle mr-2"></i> Tonton video sampai selesai untuk membuka.</div>}
-
                                     {config.questions?.map((q, qIdx) => {
                                         const currentAnswerIndex = questionCounter++;
                                         return (
@@ -444,11 +442,11 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                                                 <label className="text-xs font-bold text-slate-500 block mb-2">{qIdx+1}. {q}</label>
                                                 <textarea 
                                                      disabled={!isFinished}
-                                                     className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-pink-200 outline-none resize-none disabled:bg-slate-100 disabled:cursor-not-allowed" 
+                                                     className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-pink-200 outline-none resize-none disabled:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-400" 
                                                      rows={3} 
                                                      value={answers[currentAnswerIndex] || ''} 
                                                      onChange={e => { const newA = [...answers]; newA[currentAnswerIndex] = toTitleCase(e.target.value); setAnswers(newA); }} 
-                                                     placeholder={isFinished ? "Tulis jawabanmu..." : "Tonton video sampai habis dulu..."} 
+                                                     placeholder={isFinished ? "Tulis jawabanmu..." : "Tonton video sampai habis untuk menjawab..."} 
                                                 />
                                             </div>
                                         );
