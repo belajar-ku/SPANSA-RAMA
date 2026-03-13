@@ -30,6 +30,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
     const [videosFinished, setVideosFinished] = useState<boolean[]>([]);
     const [videosStarted, setVideosStarted] = useState<boolean[]>([]);
     const [playersReady, setPlayersReady] = useState<boolean[]>([]);
+    const [hasCompletedBefore, setHasCompletedBefore] = useState(false);
     const playerRefs = useRef<any[]>([]);
 
     useEffect(() => {
@@ -53,6 +54,7 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                 setVideosFinished([]); 
                 setVideosStarted([]);
                 setPlayersReady([]);
+                setHasCompletedBefore(false);
                 playerRefs.current = [];
 
                 const mat = await SupabaseService.getLiterasiMaterial(date);
@@ -71,18 +73,16 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                 }
                 setCurrentConfigs(configs);
                 
-                // Initialize video states
-                setVideosFinished(new Array(configs.length).fill(false));
-                setVideosStarted(new Array(configs.length).fill(false));
-                setPlayersReady(new Array(configs.length).fill(false));
-
                 const log = await SupabaseService.getDailyLog(user.id, date);
                 
                 // Calculate total questions
                 const totalQuestions = configs.reduce((acc, curr) => acc + (curr.questions?.length || 0), 0);
                 let initialAnswers = new Array(totalQuestions).fill('');
 
+                let isCompleted = false;
+
                 if (log && log.details.literasiResponse && log.details.literasiResponse.length > 0) {
+                    isCompleted = true;
                     // Merge existing answers
                     log.details.literasiResponse.forEach((ans, idx) => {
                         if (idx < totalQuestions) initialAnswers[idx] = ans;
@@ -92,9 +92,6 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                     if (log.details.literasiValidation === 'Perbaiki') {
                         setAnswers(initialAnswers);
                         setSubmitted(false); // Allow editing
-                        setVideosFinished(new Array(configs.length).fill(true)); // Allow skipping video if already watched
-                        setVideosStarted(new Array(configs.length).fill(true));
-                        setPlayersReady(new Array(configs.length).fill(true));
                         Swal.fire({
                             icon: 'warning',
                             title: 'Perbaiki Jawaban',
@@ -103,14 +100,16 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                     } else {
                         setAnswers(initialAnswers);
                         setSubmitted(true);
-                        setVideosFinished(new Array(configs.length).fill(true));
-                        setVideosStarted(new Array(configs.length).fill(true));
-                        setPlayersReady(new Array(configs.length).fill(true));
                     }
                 } else {
                     setAnswers(initialAnswers);
                     setSubmitted(false);
                 }
+
+                setHasCompletedBefore(isCompleted);
+                setVideosFinished(new Array(configs.length).fill(isCompleted));
+                setVideosStarted(new Array(configs.length).fill(isCompleted));
+                setPlayersReady(new Array(configs.length).fill(false));
                 setLoading(false);
             } catch (error) {
                 console.error("Failed to load literasi:", error);
@@ -139,10 +138,10 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                     width: '100%',
                     videoId: videoId,
                     playerVars: {
-                        'autoplay': 0, // DISABLE AUTOPLAY initially to avoid multiple videos playing
-                        'controls': 0, // HIDE CONTROLS
-                        'disablekb': 1, 
-                        'fs': 0, 
+                        'autoplay': index === 0 ? 1 : 0, 
+                        'controls': hasCompletedBefore ? 1 : 0, 
+                        'disablekb': hasCompletedBefore ? 0 : 1, 
+                        'fs': hasCompletedBefore ? 1 : 0, 
                         'rel': 0,
                         'modestbranding': 1,
                         'playsinline': 1, 
@@ -393,10 +392,10 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                                 <div className="px-4 py-2 text-sm font-bold text-slate-600">Video {vIdx + 1}</div>
                                 {/* Video Container */}
                                 <div className="relative w-full max-w-2xl mx-auto rounded-xl overflow-hidden shadow-lg bg-black group" style={{ aspectRatio: '16/9' }}>
-                                    <div id={`youtube-player-${vIdx}`} className="w-full h-full pointer-events-none"></div> 
+                                    <div id={`youtube-player-${vIdx}`} className={`w-full h-full ${hasCompletedBefore ? '' : 'pointer-events-none'}`}></div> 
                                     
                                     {/* Overlay for Initial Play */}
-                                    {!isStarted && (
+                                    {!isStarted && !hasCompletedBefore && (
                                         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/40 backdrop-blur-sm cursor-pointer" onClick={isReady ? () => handleManualPlay(vIdx) : undefined}>
                                             {isReady ? (
                                                  <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg animate-pulse-glow hover:scale-110 transition-transform">
@@ -412,12 +411,12 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                                     )}
 
                                     {/* Transparent Overlay */}
-                                    {isStarted && !isFinished && (
+                                    {isStarted && !isFinished && !hasCompletedBefore && (
                                         <div className="absolute inset-0 z-20 bg-transparent"></div>
                                     )}
                                     
                                     {/* Finished Overlay */}
-                                    {isFinished && !submitted && (
+                                    {isFinished && !submitted && !hasCompletedBefore && (
                                         <div className="absolute inset-0 z-20 bg-black/60 flex items-center justify-center text-white backdrop-blur-sm pointer-events-none">
                                             <div className="text-center animate-slide-up">
                                                 <i className="fas fa-check-circle text-4xl mb-2 text-green-400"></i>
