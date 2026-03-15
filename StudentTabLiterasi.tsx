@@ -331,10 +331,11 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
     };
 
     if (loading) return <div className="p-10 text-center"><i className="fas fa-circle-notch fa-spin text-primary-500"></i></div>;
-    if (!currentConfigs || currentConfigs.length === 0) return <div className="p-10 text-center"><p className="text-slate-500">Belum ada materi literasi untuk tanggal {date}.</p></div>;
 
     // Helper to calculate global index for answers array
     let questionCounter = 0;
+
+    const hasAnyVideo = currentConfigs && currentConfigs.length > 0 && currentConfigs.some(c => c.youtubeUrl && c.youtubeUrl.trim() !== '');
 
     return (
         <div className="p-6 pb-28 animate-slide-up">
@@ -366,19 +367,26 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                  />
             </div>
 
-            {currentConfigs.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-6 flex items-start gap-3 animate-fade-in">
-                    <i className="fas fa-info-circle text-yellow-600 mt-0.5"></i>
-                    <div>
-                        <p className="text-xs text-yellow-800 font-bold">
-                            Ada {currentConfigs.length} video yang harus dikerjakan hari ini.
-                        </p>
-                        <p className="text-[10px] text-yellow-600 mt-1">
-                            Tonton dan kerjakan soal untuk setiap video secara berurutan.
-                        </p>
-                    </div>
+            {!hasAnyVideo ? (
+                <div className="p-10 text-center glass-card rounded-[24px] shadow-sm">
+                    <i className="fas fa-video-slash text-4xl text-slate-300 mb-4"></i>
+                    <p className="text-slate-500 font-bold">Tidak Ada Kegiatan Literasi</p>
                 </div>
-            )}
+            ) : (
+                <>
+                    {currentConfigs.length > 0 && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-6 flex items-start gap-3 animate-fade-in">
+                            <i className="fas fa-info-circle text-yellow-600 mt-0.5"></i>
+                            <div>
+                                <p className="text-xs text-yellow-800 font-bold">
+                                    Ada {currentConfigs.length} video yang harus dikerjakan hari ini.
+                                </p>
+                                <p className="text-[10px] text-yellow-600 mt-1">
+                                    Tonton dan kerjakan soal untuk setiap video secara berurutan.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
             <div className="space-y-8">
                 {currentConfigs.map((config, vIdx) => {
@@ -465,6 +473,8 @@ export const TabLiterasi = ({ user, initialDate }: { user: User, initialDate: st
                     {videosFinished.every(v => v) && <i className="fas fa-paper-plane"></i>}
                 </button>
             </div>
+            </>
+            )}
         </div>
     );
 };
